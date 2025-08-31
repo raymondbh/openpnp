@@ -827,12 +827,12 @@ public class GrblDriver extends GcodeDriver {
      */
     private void updateLimitInvertMask() {
         int mask = 0;
-        if (limitInvertX) mask |= 1;
-        if (limitInvertY) mask |= 2;
-        if (limitInvertZ) mask |= 4;
-        if (limitInvertA) mask |= 8;
-        if (limitInvertB) mask |= 16;
-        if (limitInvertC) mask |= 32;
+        if (limitInvertX){ mask |= 1;}
+        if (limitInvertY){ mask |= 2;}
+        if (limitInvertZ){ mask |= 4;}
+        if (limitInvertA){ mask |= 8;}
+        if (limitInvertB){ mask |= 16;}
+        if (limitInvertC){ mask |= 32;}
         
         if (mask != limitPinInvertMask) {
             int oldValue = limitPinInvertMask;

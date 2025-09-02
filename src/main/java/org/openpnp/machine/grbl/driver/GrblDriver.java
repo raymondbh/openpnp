@@ -31,6 +31,7 @@ public class GrblDriver extends GcodeDriver {
     private GrblSettingsSync settingsSync;
     
     // === GRBL SETTINGS PROPERTIES (NO @Attribute - runtime only!) ===
+    // Stepper settings
     private int stepPulse = 10;        // $0 - Step pulse time in microseconds (default 10)
     private int stepIdleDelay = 25;    // $1 - Step idle delay in milliseconds (default 25)
     private int stepPinInvertMask = 0;     // $2 - Step pin invert bitmask
@@ -66,6 +67,10 @@ public class GrblDriver extends GcodeDriver {
     private boolean limitInvertA = false;
     private boolean limitInvertB = false;
     private boolean limitInvertC = false;
+
+    // I/O settings
+    private int inputPinInvertMask = 0;      // $370 - Input pin invert bitmask
+    private int outputPinInvertMask = 0;     // $372 - Output pin invert bitmask
 
     @Override
     public synchronized void connect() throws Exception {
@@ -841,6 +846,100 @@ public class GrblDriver extends GcodeDriver {
         }
     }
 
+    // === INPUT PIN INVERT ($370) ===
+
+    public int getInputPinInvertMask() {
+        return inputPinInvertMask;
+    }
+
+    public void setInputPinInvertMask(int mask) {
+        int oldValue = this.inputPinInvertMask;
+        this.inputPinInvertMask = mask;
+        firePropertyChange("inputPinInvertMask", oldValue, mask);
+    }
+
+    // Helper methods for individual IO pins
+    public boolean isInputInvert0() { return (inputPinInvertMask & 1) != 0; }
+    public boolean isInputInvert1() { return (inputPinInvertMask & 2) != 0; }
+    public boolean isInputInvert2() { return (inputPinInvertMask & 4) != 0; }
+    public boolean isInputInvert3() { return (inputPinInvertMask & 8) != 0; }
+    public boolean isInputInvert4() { return (inputPinInvertMask & 16) != 0; }
+    public boolean isInputInvert5() { return (inputPinInvertMask & 32) != 0; }
+    public boolean isInputInvert6() { return (inputPinInvertMask & 64) != 0; }
+    public boolean isInputInvert7() { return (inputPinInvertMask & 128) != 0; }
+
+    public void setInputInvert0(boolean invert) { 
+        setInputPinInvertMask(invert ? (inputPinInvertMask | 1) : (inputPinInvertMask & ~1));
+    }
+    public void setInputInvert1(boolean invert) { 
+        setInputPinInvertMask(invert ? (inputPinInvertMask | 2) : (inputPinInvertMask & ~2));
+    }
+    public void setInputInvert2(boolean invert) { 
+        setInputPinInvertMask(invert ? (inputPinInvertMask | 4) : (inputPinInvertMask & ~4));
+    }
+    public void setInputInvert3(boolean invert) { 
+        setInputPinInvertMask(invert ? (inputPinInvertMask | 8) : (inputPinInvertMask & ~8));
+    }
+    public void setInputInvert4(boolean invert) { 
+        setInputPinInvertMask(invert ? (inputPinInvertMask | 16) : (inputPinInvertMask & ~16));
+    }
+    public void setInputInvert5(boolean invert) { 
+        setInputPinInvertMask(invert ? (inputPinInvertMask | 32) : (inputPinInvertMask & ~32));
+    }
+    public void setInputInvert6(boolean invert) { 
+        setInputPinInvertMask(invert ? (inputPinInvertMask | 64) : (inputPinInvertMask & ~64));
+    }
+    public void setInputInvert7(boolean invert) { 
+        setInputPinInvertMask(invert ? (inputPinInvertMask | 128) : (inputPinInvertMask & ~128));
+    }
+
+    // === OUTPUT PIN INVERT ($372) ===
+
+    public int getOutputPinInvertMask() {
+        return outputPinInvertMask;
+    }
+
+    public void setOutputPinInvertMask(int mask) {
+        int oldValue = this.outputPinInvertMask;
+        this.outputPinInvertMask = mask;
+        firePropertyChange("outputPinInvertMask", oldValue, mask);
+    }
+
+    // Helper methods for individual IO pins
+    public boolean isOutputInvert0() { return (outputPinInvertMask & 1) != 0; }
+    public boolean isOutputInvert1() { return (outputPinInvertMask & 2) != 0; }
+    public boolean isOutputInvert2() { return (outputPinInvertMask & 4) != 0; }
+    public boolean isOutputInvert3() { return (outputPinInvertMask & 8) != 0; }
+    public boolean isOutputInvert4() { return (outputPinInvertMask & 16) != 0; }
+    public boolean isOutputInvert5() { return (outputPinInvertMask & 32) != 0; }
+    public boolean isOutputInvert6() { return (outputPinInvertMask & 64) != 0; }
+    public boolean isOutputInvert7() { return (outputPinInvertMask & 128) != 0; }
+
+    public void setOutputInvert0(boolean invert) { 
+        setOutputPinInvertMask(invert ? (outputPinInvertMask | 1) : (outputPinInvertMask & ~1));
+    }
+    public void setOutputInvert1(boolean invert) { 
+        setOutputPinInvertMask(invert ? (outputPinInvertMask | 2) : (outputPinInvertMask & ~2));
+    }
+    public void setOutputInvert2(boolean invert) { 
+        setOutputPinInvertMask(invert ? (outputPinInvertMask | 4) : (outputPinInvertMask & ~4));
+    }
+    public void setOutputInvert3(boolean invert) { 
+        setOutputPinInvertMask(invert ? (outputPinInvertMask | 8) : (outputPinInvertMask & ~8));
+    }
+    public void setOutputInvert4(boolean invert) { 
+        setOutputPinInvertMask(invert ? (outputPinInvertMask | 16) : (outputPinInvertMask & ~16));
+    }
+    public void setOutputInvert5(boolean invert) { 
+        setOutputPinInvertMask(invert ? (outputPinInvertMask | 32) : (outputPinInvertMask & ~32));
+    }
+    public void setOutputInvert6(boolean invert) { 
+        setOutputPinInvertMask(invert ? (outputPinInvertMask | 64) : (outputPinInvertMask & ~64));
+    }
+    public void setOutputInvert7(boolean invert) { 
+        setOutputPinInvertMask(invert ? (outputPinInvertMask | 128) : (outputPinInvertMask & ~128));
+    }
+
     // === METHODS FOR GRBLCONTROLLERAXIS TO UPDATE BITMASKS ===
     
     /**
@@ -986,4 +1085,77 @@ public class GrblDriver extends GcodeDriver {
             setGangedMotorInvertMask(newMask);
         }
     }
+
+    /**
+     * Update a specific bit in the input pin invert mask ($370)
+     * Called by GrblActuator when individual IO input setting changes
+     */
+    public void updateInputPinInvertBit(int ioIndex, boolean invert) throws Exception {
+        if (ioIndex < 0 || ioIndex > 7) {
+            throw new Exception("Invalid IO index: " + ioIndex);
+        }
+        
+        if (settingsSync == null) {
+            throw new Exception("Settings sync not available");
+        }
+        
+        // Read current mask from controller
+        String currentMaskStr = settingsSync.getControllerSetting(370);
+        int currentMask = (currentMaskStr != null) ? Integer.parseInt(currentMaskStr) : 0;
+        
+        // Update the specific bit
+        int bitMask = 1 << ioIndex;
+        int newMask;
+        if (invert) {
+            newMask = currentMask | bitMask;  // Set bit
+        } else {
+            newMask = currentMask & ~bitMask; // Clear bit
+        }
+        
+        // Write back to controller if changed
+        if (newMask != currentMask) {
+            settingsSync.writeSettingToController(370, String.valueOf(newMask));
+            Logger.info("Updated input pin invert mask $370 from {} to {}", currentMask, newMask);
+            
+            // Update our local copy
+            setInputPinInvertMask(newMask);
+        }
+    }
+
+    /**
+     * Update a specific bit in the output pin invert mask ($372)
+     * Called by GrblActuator when individual IO output setting changes
+     */
+    public void updateOutputPinInvertBit(int ioIndex, boolean invert) throws Exception {
+        if (ioIndex < 0 || ioIndex > 7) {
+            throw new Exception("Invalid IO index: " + ioIndex);
+        }
+        
+        if (settingsSync == null) {
+            throw new Exception("Settings sync not available");
+        }
+        
+        // Read current mask from controller
+        String currentMaskStr = settingsSync.getControllerSetting(372);
+        int currentMask = (currentMaskStr != null) ? Integer.parseInt(currentMaskStr) : 0;
+        
+        // Update the specific bit
+        int bitMask = 1 << ioIndex;
+        int newMask;
+        if (invert) {
+            newMask = currentMask | bitMask;  // Set bit
+        } else {
+            newMask = currentMask & ~bitMask; // Clear bit
+        }
+        
+        // Write back to controller if changed
+        if (newMask != currentMask) {
+            settingsSync.writeSettingToController(372, String.valueOf(newMask));
+            Logger.info("Updated output pin invert mask $372 from {} to {}", currentMask, newMask);
+            
+            // Update our local copy
+            setOutputPinInvertMask(newMask);
+        }
+    }
+
 }

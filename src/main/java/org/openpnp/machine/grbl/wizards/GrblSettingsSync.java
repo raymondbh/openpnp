@@ -20,9 +20,13 @@ import org.pmw.tinylog.Logger;
  * between controller flash memory and OpenPnP configuration.
  */
 public class GrblSettingsSync {
+
     private final GcodeDriver driver;
     private Map<Integer, String> controllerSettings;
+
     private boolean gangedMotorSupported = false;  // Cache $8 support status
+    private boolean inputPinInvertSupported = false;   // $370 - Input pin invert bitmask
+    private boolean outputPinInvertSupported = false;  // $372 - Output pin invert bitmask
     
     // Pattern for parsing grbl settings: $100=180.000
     private static final Pattern SETTING_PATTERN = Pattern.compile("\\$(\\d+)=([\\d\\.\\-]+)");
@@ -67,6 +71,9 @@ public class GrblSettingsSync {
             
             // Check for ganged motor support ($8)
             checkGangedMotorSupport();
+
+            // Check for IO pin invert support ($370, $372)
+            checkIoPinInvertSupport();
             
             Logger.info("Successfully read {} settings from controller", controllerSettings.size());
             
@@ -145,6 +152,46 @@ public class GrblSettingsSync {
      */
     public boolean isGangedMotorSupported() {
         return gangedMotorSupported;
+    }
+
+    /**
+     * Check if grblHAL controller supports IO pin invert settings
+     * $370 = Input pin invert bitmask (for M143 read commands)
+     * $372 = Output pin invert bitmask (for M42 control commands)
+     */
+    private void checkIoPinInvertSupport() {
+        inputPinInvertSupported = controllerSettings.containsKey(370);
+        outputPinInvertSupported = controllerSettings.containsKey(372);
+        
+        if (inputPinInvertSupported) {
+            String value = controllerSettings.get(370);
+            Logger.info("Input pin invert support detected: $370={}", value);
+        } else {
+            Logger.info("No input pin invert support detected (no $370 setting)");
+        }
+        
+        if (outputPinInvertSupported) {
+            String value = controllerSettings.get(372);
+            Logger.info("Output pin invert support detected: $372={}", value);
+        } else {
+            Logger.info("No output pin invert support detected (no $372 setting)");
+        }
+    }
+
+    /**
+     * Check if grblHAL controller supports input pin invert settings ($370)
+     * Used by GrblActuator to determine if input pin invert is available
+     */
+    public boolean isInputPinInvertSupported() {
+        return inputPinInvertSupported;
+    }
+    
+    /**
+     * Check if grblHAL controller supports output pin invert settings ($372)
+     * Used by GrblActuator to determine if output pin invert is available
+     */
+    public boolean isOutputPinInvertSupported() {
+        return outputPinInvertSupported;
     }
 
     /**
@@ -308,7 +355,6 @@ public class GrblSettingsSync {
                 }
             }
             
-            // ... resten av metoden
         } catch (Exception e) {
             Logger.warn("Failed to check settings for axis {}: {}", axis.getName(), e.getMessage());
         }
@@ -347,5 +393,16 @@ public class GrblSettingsSync {
             case "C": return 5;
             default: return -1;
         }
+    }
+    
+    /**
+     * Reset cached settings - called when disconnecting
+     */
+    public void resetSettings() {
+        controllerSettings.clear();
+        gangedMotorSupported = false;
+        inputPinInvertSupported = false;
+        outputPinInvertSupported = false;
+        Logger.info("Reset cached controller settings");
     }
 }

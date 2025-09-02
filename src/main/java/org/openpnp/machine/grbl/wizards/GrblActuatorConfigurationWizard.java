@@ -129,7 +129,8 @@ public class GrblActuatorConfigurationWizard extends AbstractConfigurationWizard
         int row = 0;
         
         // Row 0: Actuator type selection
-        gbc.gridx = 0; gbc.gridy = row;
+        gbc.gridx = 0;
+        gbc.gridy = row;
         panel.add(new JLabel("Actuator Type:"), gbc);
         gbc.gridx = 1;
         panel.add(actuatorTypeCombo, gbc);
@@ -138,7 +139,8 @@ public class GrblActuatorConfigurationWizard extends AbstractConfigurationWizard
         
         // Row 1: IO Index field
         row++;
-        gbc.gridx = 0; gbc.gridy = row;
+        gbc.gridx = 0;
+        gbc.gridy = row;
         panel.add(new JLabel("IO Index:"), gbc);
         gbc.gridx = 1;
         panel.add(ioIndexField, gbc);
@@ -147,7 +149,8 @@ public class GrblActuatorConfigurationWizard extends AbstractConfigurationWizard
         
         // Row 2: Input pin invert checkbox
         row++;
-        gbc.gridx = 0; gbc.gridy = row;
+        gbc.gridx = 0;
+        gbc.gridy = row;
         panel.add(new JLabel("Input Pin ($370):"), gbc);
         gbc.gridx = 1;
         panel.add(inputPinInvertCheckbox, gbc);
@@ -156,7 +159,8 @@ public class GrblActuatorConfigurationWizard extends AbstractConfigurationWizard
         
         // Row 3: Output pin invert checkbox  
         row++;
-        gbc.gridx = 0; gbc.gridy = row;
+        gbc.gridx = 0;
+        gbc.gridy = row;
         panel.add(new JLabel("Output Pin ($372):"), gbc);
         gbc.gridx = 1;
         panel.add(outputPinInvertCheckbox, gbc);
@@ -165,7 +169,9 @@ public class GrblActuatorConfigurationWizard extends AbstractConfigurationWizard
         
         // Connection status info - samme som axis wizard
         row++;
-        gbc.gridx = 0; gbc.gridy = row; gbc.gridwidth = 3;
+        gbc.gridx = 0; 
+        gbc.gridy = row;
+        gbc.gridwidth = 3;
         JLabel statusLabel = new JLabel("<html><i>Connect to grblHAL controller to enable IO pin invert settings</i></html>");
         panel.add(statusLabel, gbc);
         

@@ -742,6 +742,62 @@ public class GcodeDriverSolutions implements Solutions.Subject {
                                 });
                             }
                         }
+
+                        // Find head-level actuators that could benefit from GrblActuator conversion
+                        for (Head head : machine.getHeads()) {
+                            for (Actuator actuator : head.getActuators()) {
+                                if (actuator instanceof org.openpnp.machine.reference.ReferenceActuator && 
+                                    !(actuator instanceof org.openpnp.machine.grbl.actuator.GrblActuator) &&
+                                    actuator.getDriver() == grblDriver) {
+                                    
+                                    solutions.add(new Solutions.Issue(
+                                            actuator, 
+                                            "Head actuator '" + actuator.getName() + "' on head '" + head.getName() + "' can be upgraded to GrblActuator for IO pin invert control.",
+                                            "Convert to GrblActuator for enhanced grblHAL pick & place support.",
+                                            Severity.Suggestion,
+                                            "https://github.com/openpnp/openpnp/wiki/GrblDriver#grblactuator") {
+                                        
+                                        @Override
+                                        public void setState(Solutions.State state) throws Exception {
+                                            if (state == Solutions.State.Solved) {
+                                                convertToGrblActuator((org.openpnp.machine.reference.ReferenceActuator) actuator, grblDriver);
+                                            }
+                                            else if (getState() == Solutions.State.Solved) {
+                                                convertFromGrblActuator(actuator, grblDriver);
+                                            }
+                                            super.setState(state);
+                                        }
+                                        
+                                        @Override
+                                        public String getExtendedDescription() {
+                                            return "<html><body>" +
+                                                   "<p><strong>GrblActuator Enhancement Available</strong></p>" +
+                                                   "<p>Your head actuator <strong>" + actuator.getName() + "</strong> on head <strong>" + head.getName() + "</strong> can be enhanced for grblHAL pick & place operations.</p>" +
+                                                   "<br>" +
+                                                   "<p><strong>GrblActuator provides:</strong></p>" +
+                                                   "<ul>" +
+                                                   "<li><strong>IO Pin Invert Control:</strong> Individual control of input ($370) and output ($372) pin polarity</li>" +
+                                                   "<li><strong>Actuator Type Selection:</strong> Choose Output Only, Input Only, or Input/Output operation</li>" +
+                                                   "<li><strong>Auto-Sync:</strong> Automatically synchronizes settings with grblHAL controller</li>" +
+                                                   "<li><strong>Connection Aware:</strong> GUI adapts based on controller connection status</li>" +
+                                                   "<li><strong>Pick & Place Optimized:</strong> Designed for vacuum pumps, blow-off valves, LED lighting, etc.</li>" +
+                                                   "</ul>" +
+                                                   "<br>" +
+                                                   "<p><strong>Current Configuration:</strong></p>" +
+                                                   "<ul>" +
+                                                   "<li>Actuator Name: " + actuator.getName() + "</li>" +
+                                                   "<li>Location: Head '" + head.getName() + "'</li>" +
+                                                   "<li>IO Index: " + ((org.openpnp.machine.reference.ReferenceActuator) actuator).getIndex() + "</li>" +
+                                                   "<li>Driver: " + grblDriver.getName() + "</li>" +
+                                                   "</ul>" +
+                                                   "<br>" +
+                                                   "<p><em>Click Solve to convert this head actuator to GrblActuator with IO pin invert support.</em></p>" +
+                                                   "</body></html>";
+                                        }
+                                    });
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -1596,12 +1652,21 @@ public class GcodeDriverSolutions implements Solutions.Subject {
                     axisName, originalDriver.getName());
     }
 
-        /**
+    /**
      * Convert ReferenceActuator to GrblActuator with preserved settings
      */
     private static void convertToGrblActuator(org.openpnp.machine.reference.ReferenceActuator oldActuator, 
                                               org.openpnp.machine.grbl.driver.GrblDriver grblDriver) throws Exception {
         Machine machine = Configuration.get().getMachine();
+        
+        // Find if this is a head actuator or machine actuator
+        Head parentHead = null;
+        for (Head head : machine.getHeads()) {
+            if (head.getActuators().contains(oldActuator)) {
+                parentHead = head;
+                break;
+            }
+        }
         
         // Serialize the current actuator to preserve all settings
         Serializer serOut = XmlSerialize.createSerializer();
@@ -1623,12 +1688,20 @@ public class GcodeDriverSolutions implements Solutions.Subject {
         // Set default actuator type (most pick & place actuators are output only)
         newActuator.setActuatorType(org.openpnp.machine.grbl.actuator.GrblActuator.ActuatorType.OUTPUT_ONLY);
         
-        // Replace actuator in machine using proper API
-        machine.removeActuator(oldActuator);
-        machine.addActuator(newActuator);
-        
-        Logger.info("Converted ReferenceActuator '{}' to GrblActuator with IO pin invert support (IO index: {})", 
-                   newActuator.getName(), newActuator.getIndex());
+        // Replace actuator using appropriate API
+        if (parentHead != null) {
+            // Head-level actuator - use head API
+            parentHead.removeActuator(oldActuator);
+            parentHead.addActuator(newActuator);
+            Logger.info("Converted head actuator '{}' on head '{}' to GrblActuator with IO pin invert support (IO index: {})", 
+                       newActuator.getName(), parentHead.getName(), newActuator.getIndex());
+        } else {
+            // Machine-level actuator - use machine API
+            machine.removeActuator(oldActuator);
+            machine.addActuator(newActuator);
+            Logger.info("Converted machine actuator '{}' to GrblActuator with IO pin invert support (IO index: {})", 
+                       newActuator.getName(), newActuator.getIndex());
+        }
     }
     
     /**
@@ -1637,6 +1710,15 @@ public class GcodeDriverSolutions implements Solutions.Subject {
     private static void convertFromGrblActuator(Actuator actuator, 
                                                org.openpnp.machine.grbl.driver.GrblDriver grblDriver) throws Exception {
         Machine machine = Configuration.get().getMachine();
+        
+        // Find if this is a head actuator or machine actuator
+        Head parentHead = null;
+        for (Head head : machine.getHeads()) {
+            if (head.getActuators().contains(actuator)) {
+                parentHead = head;
+                break;
+            }
+        }
         
         // Serialize the current actuator
         Serializer serOut = XmlSerialize.createSerializer();
@@ -1655,11 +1737,19 @@ public class GcodeDriverSolutions implements Solutions.Subject {
         org.openpnp.machine.reference.ReferenceActuator refActuator = 
                 serIn.read(org.openpnp.machine.reference.ReferenceActuator.class, sr);
         
-        // Replace actuator in machine using proper API
-        machine.removeActuator(actuator);
-        machine.addActuator(refActuator);
-        
-        Logger.info("Converted GrblActuator '{}' back to ReferenceActuator", refActuator.getName());
+        // Replace actuator using appropriate API
+        if (parentHead != null) {
+            // Head-level actuator - use head API
+            parentHead.removeActuator(actuator);
+            parentHead.addActuator(refActuator);
+            Logger.info("Converted head actuator '{}' on head '{}' back to ReferenceActuator", 
+                       refActuator.getName(), parentHead.getName());
+        } else {
+            // Machine-level actuator - use machine API
+            machine.removeActuator(actuator);
+            machine.addActuator(refActuator);
+            Logger.info("Converted machine actuator '{}' back to ReferenceActuator", refActuator.getName());
+        }
     }
 
     /**

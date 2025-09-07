@@ -1,13 +1,30 @@
-package org.openpnp.machine.grbl.actuator;
+/*
+ * Copyright (C) 2025 Raymond B. Hansen <raymondbh@gmail.com>
+ * 
+ * This file is part of OpenPnP.
+ * 
+ * OpenPnP is free software: you can redistribute it and/or modify it under the terms of the GNU
+ * General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * OpenPnP is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+ * Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along with OpenPnP. If not, see
+ * <http://www.gnu.org/licenses/>.
+ * 
+ * For more information about OpenPnP visit http://openpnp.org
+ * 
+ * Enhanced grblHAL support - bidirectional settings sync and pick & place optimization.
+ */
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+package org.openpnp.machine.grbl.actuator;
 
 import org.openpnp.gui.support.PropertySheetWizardAdapter;
 import org.openpnp.machine.grbl.driver.GrblDriver;
 import org.openpnp.machine.grbl.wizards.GrblActuatorConfigurationWizard;
 import org.openpnp.machine.reference.ReferenceActuator;
-import org.openpnp.model.Configuration;
 import org.openpnp.util.Collect;
 import org.pmw.tinylog.Logger;
 
@@ -43,15 +60,32 @@ public class GrblActuator extends ReferenceActuator {
             this.hasInput = hasInput;
         }
         
+        /**
+         * Returns the display name for this actuator type.
+         * 
+         * @return human-readable name for GUI display
+         */
         @Override
         public String toString() { 
             return displayName; 
         }
         
+        /**
+         * Checks if this actuator type supports output operations.
+         * Output operations use M42 commands and $372 pin invert setting.
+         * 
+         * @return true if output operations are supported
+         */
         public boolean hasOutput() { 
             return hasOutput; 
         }
         
+        /**
+         * Checks if this actuator type supports input operations.
+         * Input operations use M143 commands and $370 pin invert setting.
+         * 
+         * @return true if input operations are supported
+         */
         public boolean hasInput() { 
             return hasInput; 
         }
@@ -63,51 +97,28 @@ public class GrblActuator extends ReferenceActuator {
     private boolean inputPinInvert = false;    // $370 bit - active if actuatorType.hasInput()
     private boolean outputPinInvert = false;   // $372 bit - active if actuatorType.hasOutput()
     
-    // Connection tracking
-    private PropertyChangeListener driverConnectionListener;
-    
     // === INITIALIZATION ===
     
     public GrblActuator() {
         super();
-        setupConnectionTracking();
     }
     
     /**
-     * Setup connection tracking to monitor GrblDriver connection state
-     */
-    private void setupConnectionTracking() {
-        driverConnectionListener = new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
-                if ("connected".equals(evt.getPropertyName())) {
-                    boolean connected = (Boolean) evt.getNewValue();
-                    Logger.debug("GrblActuator {} connection state changed: {}", getName(), connected);
-                    
-                    if (connected) {
-                        // Sync from controller when connected
-                        syncFromController();
-                    }
-                }
-            }
-        };
-        
-        // Add listener to driver when available
-        Configuration.get().addPropertyChangeListener("driver", evt -> {
-            if (evt.getNewValue() instanceof GrblDriver) {
-                GrblDriver driver = (GrblDriver) evt.getNewValue();
-                driver.addPropertyChangeListener("connected", driverConnectionListener);
-                Logger.debug("Added connection listener to GrblDriver for actuator {}", getName());
-            }
-        });
-    }
-    
-    // === ACTUATOR TYPE ===
-    
+     * Returns property sheets for this actuator including parent sheets and grblHAL-specific settings.
+     * Adds "Grbl Settings" tab with pin invert configuration wizard.
+     * 
+     * @return array of PropertySheet instances for GUI configuration
+    */
     public ActuatorType getActuatorType() {
         return actuatorType;
     }
     
+    /**
+     * Sets the actuator type which determines available pin invert options.
+     * Changes which checkboxes are enabled in the configuration wizard.
+     * 
+     * @param actuatorType the actuator type (Output Only, Input Only, or Input/Output)
+     */
     public void setActuatorType(ActuatorType actuatorType) {
         ActuatorType oldValue = this.actuatorType;
         this.actuatorType = actuatorType;
@@ -116,12 +127,24 @@ public class GrblActuator extends ReferenceActuator {
         Logger.debug("Actuator {} type changed to: {}", getName(), actuatorType);
     }
     
-    // === INPUT PIN INVERT ($370) ===
-    
+    /**
+     * Gets the input pin invert state for this actuator.
+     * When true, input readings from M143 commands are inverted.
+     * Corresponds to a bit in the grblHAL $370 setting.
+     * 
+     * @return true if input pin logic is inverted, false for normal logic
+     */   
     public boolean isInputPinInvert() {
         return inputPinInvert;
     }
     
+    /**
+     * Sets the input pin invert state for this actuator.
+     * When true, input readings from M143 commands will be inverted.
+     * Automatically syncs to controller $370 setting if connected and actuator supports input.
+     * 
+     * @param inputPinInvert true to invert input pin logic, false for normal logic
+     */
     public void setInputPinInvert(boolean inputPinInvert) {
         boolean oldValue = this.inputPinInvert;
         this.inputPinInvert = inputPinInvert;
@@ -134,12 +157,24 @@ public class GrblActuator extends ReferenceActuator {
         firePropertyChange("inputPinInvert", oldValue, inputPinInvert);
     }
     
-    // === OUTPUT PIN INVERT ($372) ===
-    
+    /**
+     * Gets the output pin invert state for this actuator.
+     * When true, M42 commands use inverted logic (1=OFF, 0=ON).
+     * Corresponds to a bit in the grblHAL $372 setting.
+     * 
+     * @return true if output pin logic is inverted, false for normal logic
+     */
     public boolean isOutputPinInvert() {
         return outputPinInvert;
     }
     
+    /**
+     * Sets the output pin invert state for this actuator.
+     * When true, M42 commands will use inverted logic (1=OFF, 0=ON).
+     * Automatically syncs to controller $372 setting if connected and actuator supports output.
+     * 
+     * @param outputPinInvert true to invert output pin logic, false for normal logic
+     */
     public void setOutputPinInvert(boolean outputPinInvert) {
         boolean oldValue = this.outputPinInvert;
         this.outputPinInvert = outputPinInvert;
@@ -151,11 +186,12 @@ public class GrblActuator extends ReferenceActuator {
         
         firePropertyChange("outputPinInvert", oldValue, outputPinInvert);
     }
-    
-    // === CONNECTION MANAGEMENT ===
-    
+        
     /**
-     * Check if actuator is connected to a GrblDriver
+     * Checks if this actuator is connected to a grblHAL controller.
+     * Used to determine if settings can be synchronized to the controller.
+     * 
+     * @return true if connected to a GrblDriver that is connected to controller
      */
     public boolean isConnected() {
         GrblDriver grblDriver = getGrblDriver();
@@ -163,7 +199,10 @@ public class GrblActuator extends ReferenceActuator {
     }
     
     /**
-     * Get the GrblDriver instance for this actuator
+     * Gets the GrblDriver instance associated with this actuator.
+     * Used internally for controller communication and settings sync.
+     * 
+     * @return GrblDriver instance or null if not available or wrong driver type
      */
     private GrblDriver getGrblDriver() {
         try {
@@ -176,10 +215,9 @@ public class GrblActuator extends ReferenceActuator {
         return null;
     }
     
-    // === CONTROLLER SYNC METHODS ===
-    
     /**
-     * Sync input pin invert setting to grblHAL controller ($370)
+     * Synchronizes input pin invert setting to the grblHAL controller.
+     * Updates the corresponding bit in the $370 bitmask and sends to controller.
      */
     private void syncInputPinInvertToController() {
         try {
@@ -206,7 +244,8 @@ public class GrblActuator extends ReferenceActuator {
     }
     
     /**
-     * Sync output pin invert setting to grblHAL controller ($372)
+     * Synchronizes output pin invert setting to the grblHAL controller.
+     * Updates the corresponding bit in the $372 bitmask and sends to controller.
      */
     private void syncOutputPinInvertToController() {
         try {
@@ -233,10 +272,11 @@ public class GrblActuator extends ReferenceActuator {
     }
     
     /**
-     * Sync both input and output pin invert settings from controller
-     * Called when connection is established
+     * Synchronizes pin invert settings from the grblHAL controller to this actuator.
+     * Reads $370 and $372 settings and updates local properties accordingly.
+     * Called automatically when connection is established.
      */
-    private void syncFromController() {
+    public void syncFromController() {
         try {
             GrblDriver grblDriver = getGrblDriver();
             if (grblDriver == null || grblDriver.getSettingsSync() == null) {
@@ -266,7 +306,10 @@ public class GrblActuator extends ReferenceActuator {
     }
     
     /**
-     * Sync input pin invert from controller ($370)
+     * Reads input pin invert setting from controller $370 and updates local property.
+     * 
+     * @param grblDriver the driver instance to read from
+     * @param ioIndex the IO index (0-7) for this actuator
      */
     private void syncInputPinInvertFromController(GrblDriver grblDriver, int ioIndex) {
         String inputInvertStr = grblDriver.getSettingsSync().getControllerSetting(370);
@@ -288,7 +331,10 @@ public class GrblActuator extends ReferenceActuator {
     }
     
     /**
-     * Sync output pin invert from controller ($372)
+     * Reads output pin invert setting from controller $372 and updates local property.
+     * 
+     * @param grblDriver the driver instance to read from  
+     * @param ioIndex the IO index (0-7) for this actuator
      */
     private void syncOutputPinInvertFromController(GrblDriver grblDriver, int ioIndex) {
         String outputInvertStr = grblDriver.getSettingsSync().getControllerSetting(372);
@@ -309,30 +355,22 @@ public class GrblActuator extends ReferenceActuator {
         }
     }
     
-    // === GUI INTEGRATION ===
-    
+    /**
+     * Returns property sheets for this actuator including parent sheets and grblHAL-specific settings.
+     * Adds "Grbl Settings" tab with pin invert configuration wizard.
+     * 
+     * @return array of PropertySheet instances for GUI configuration
+     */
     @Override
     public PropertySheet[] getPropertySheets() {
         // Get parent sheets from ReferenceActuator
         PropertySheet[] parentSheets = super.getPropertySheets();
         
-        // Add our grblHAL-specific sheet
         return Collect.concat(
             parentSheets,
             new PropertySheet[] {
-                new PropertySheetWizardAdapter(new GrblActuatorConfigurationWizard(this), "Grbl Settings")
+                new PropertySheetWizardAdapter(new GrblActuatorConfigurationWizard(getMachine(), this), "Grbl Settings")
             }
         );
-    }
-    
-    // === CLEANUP ===
-    
-    @Override
-    protected void finalize() throws Throwable {
-        // Remove connection listener on cleanup
-        if (driverConnectionListener != null && getDriver() instanceof GrblDriver) {
-            ((GrblDriver) getDriver()).removePropertyChangeListener("connected", driverConnectionListener);
-        }
-        super.finalize();
     }
 }

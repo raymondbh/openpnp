@@ -1,3 +1,24 @@
+/*
+ * Copyright (C) 2025 Raymond B. Hansen <raymondbh@gmail.com>
+ * 
+ * This file is part of OpenPnP.
+ * 
+ * OpenPnP is free software: you can redistribute it and/or modify it under the terms of the GNU
+ * General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * OpenPnP is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+ * Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along with OpenPnP. If not, see
+ * <http://www.gnu.org/licenses/>.
+ * 
+ * For more information about OpenPnP visit http://openpnp.org
+ * 
+ * Enhanced grblHAL support - driver with bidirectional settings synchronization.
+ */
+
 package org.openpnp.machine.grbl.driver;
 
 import java.util.List;
@@ -15,29 +36,34 @@ import org.openpnp.machine.grbl.wizards.SettingDiscrepancy;
 import org.pmw.tinylog.Logger;
 
 /**
- * Enhanced GcodeDriver with bi-directional settings synchronization for 
- * grbl and grblHAL controllers. Automatically syncs axis settings between 
- * OpenPnP configuration and controller flash/EEPROM memory.
+ * Enhanced GcodeDriver with settings synchronization for grbl and grblHAL controllers.
  * 
- * Features:
- * - Automatic sync check on connect
- * - Bi-directional sync (OpenPnP <-> Controller)
- * - GUI dialog for handling discrepancies
- * - Support for steps/mm, feedrate, and acceleration
- * - Future support for homing and I/O settings
+ * <p>This driver extends the basic GcodeDriver with specialized support for grbl/grblHAL
+ * firmware, providing seamless integration between OpenPnP configuration and controller
+ * EEPROM settings.</p>
+ * 
+ * <h3>Supported Settings:</h3>
+ * <ul>
+ * <li>Step timing settings ($0, $1)</li>
+ * <li>Pin invert masks ($2, $3, $4, $8)</li>
+ * <li>Homing configuration ($22-$27, $44-$46)</li>
+ * <li>Limits and travel settings ($5, $20, $21, $130-$132)</li>
+ * <li>I/O pin invert settings ($370, $372)</li>
+ * </ul>
  */
+
 public class GrblDriver extends GcodeDriver {
     
     private GrblSettingsSync settingsSync;
     
     // === GRBL SETTINGS PROPERTIES (NO @Attribute - runtime only!) ===
     // Stepper settings
-    private int stepPulse = 10;        // $0 - Step pulse time in microseconds (default 10)
-    private int stepIdleDelay = 25;    // $1 - Step idle delay in milliseconds (default 25)
-    private int stepPinInvertMask = 0;     // $2 - Step pin invert bitmask
-    private int dirPinInvertMask = 0;      // $3 - Direction pin invert bitmask  
-    private int stepEnableInvertMask = 0;     // $4 - Step enable invert bitmask
-    private int gangedMotorInvertMask = 0;     // $8 - Ganged motor invert bitmask
+    private double stepPulse = 5.0;         // $0 - Step pulse time in microseconds (default 5.0)
+    private int stepIdleDelay = 25;         // $1 - Step idle delay in milliseconds (default 25)
+    private int stepPinInvertMask = 0;      // $2 - Step pin invert bitmask
+    private int dirPinInvertMask = 0;       // $3 - Direction pin invert bitmask  
+    private int stepEnableInvertMask = 0;   // $4 - Step enable invert bitmask
+    private int gangedMotorInvertMask = 0;  // $8 - Ganged motor invert bitmask
     
     // Homing settings
     private boolean homingEnabled = false;
@@ -240,12 +266,12 @@ public class GrblDriver extends GcodeDriver {
     }
 
     // Step pulse ($0)
-    public int getStepPulse() {
+    public double getStepPulse() {
         return stepPulse;
     }
 
-    public void setStepPulse(int stepPulse) {
-        int oldValue = this.stepPulse;
+    public void setStepPulse(double stepPulse) {
+        double oldValue = this.stepPulse;
         this.stepPulse = stepPulse;
         firePropertyChange("stepPulse", oldValue, stepPulse);
     }

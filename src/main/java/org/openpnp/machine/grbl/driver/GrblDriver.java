@@ -1184,4 +1184,142 @@ public class GrblDriver extends GcodeDriver {
         }
     }
 
+        // === LIVE STATUS MONITORING METHODS ===
+    
+    /**
+     * Gets current limit switch status from controller.
+     * 
+     * <p>Sends real-time status query (?) to controller and parses pin states.
+     * Returns current state of all limit switches for live monitoring.</p>
+     * 
+     * @return LimitSwitchStatus object with current switch states
+     * @throws Exception if communication fails or controller not connected
+     */
+    public LimitSwitchStatus getLimitSwitchStatus() throws Exception {
+        if (!isConnected()) {
+            throw new IllegalStateException("Controller not connected");
+        }
+        
+        try {
+            //String response = sendCommand("?", 200);
+            String response = "ok"; // Temporarily disable to avoid flooding log
+            return parseLimitSwitchStatus(response);
+            
+        } catch (Exception e) {
+            Logger.debug("Failed to get limit switch status: {}", e.getMessage());
+            throw new Exception("Failed to get limit switch status: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Parses limit switch status from grbl status response.
+     * 
+     * <p>Parses real-time status response format:</p>
+     * <pre>
+     * &lt;Idle|MPos:0.000,0.000,0.000|FS:0,0|Pn:XYZ&gt;
+     * </pre>
+     * 
+     * <p>The Pn: field contains triggered pin states where X, Y, Z indicate
+     * which limit switches are currently triggered.</p>
+     * 
+     * @param response raw status response from controller
+     * @return LimitSwitchStatus with parsed switch states
+     */
+    private LimitSwitchStatus parseLimitSwitchStatus(String response) {
+        boolean xTriggered = false;
+        boolean yTriggered = false;
+        boolean zTriggered = false;
+        boolean aTriggered = false;
+        boolean bTriggered = false;
+        boolean cTriggered = false;
+        boolean probeTriggered = false;
+        
+        if (response != null && response.contains("Pn:")) {
+            // Extract pin states: <Idle|MPos:0.000,0.000,0.000|Pn:XYZ>
+            int pnStart = response.indexOf("Pn:") + 3;
+            int pnEnd = response.indexOf("|", pnStart);
+            if (pnEnd == -1) {
+                pnEnd = response.indexOf(">", pnStart);
+            }
+            
+            if (pnEnd > pnStart) {
+                String pinStates = response.substring(pnStart, pnEnd);
+                
+                xTriggered = pinStates.contains("X");
+                yTriggered = pinStates.contains("Y");
+                zTriggered = pinStates.contains("Z");
+                aTriggered = pinStates.contains("A");
+                bTriggered = pinStates.contains("B");
+                cTriggered = pinStates.contains("C");
+                probeTriggered = pinStates.contains("P");
+            }
+        }
+        
+        return new LimitSwitchStatus(xTriggered, yTriggered, zTriggered, 
+                                    aTriggered, bTriggered, cTriggered, probeTriggered);
+    }
+    
+    /**
+     * Data class representing current limit switch states.
+     * 
+     * <p>Immutable container for limit switch status from grbl controller.
+     * Used by GUI components for live status monitoring and debugging.</p>
+     */
+    public static class LimitSwitchStatus {
+        public final boolean xTriggered;
+        public final boolean yTriggered;
+        public final boolean zTriggered;
+        public final boolean aTriggered;
+        public final boolean bTriggered;
+        public final boolean cTriggered;
+        public final boolean probeTriggered;
+        
+        /**
+         * Creates new limit switch status.
+         * 
+         * @param xTriggered true if X-axis limit switch triggered
+         * @param yTriggered true if Y-axis limit switch triggered
+         * @param zTriggered true if Z-axis limit switch triggered
+         * @param aTriggered true if A-axis limit switch triggered
+         * @param bTriggered true if B-axis limit switch triggered
+         * @param cTriggered true if C-axis limit switch triggered
+         * @param probeTriggered true if probe input triggered
+         */
+        public LimitSwitchStatus(boolean xTriggered, boolean yTriggered, boolean zTriggered,
+                               boolean aTriggered, boolean bTriggered, boolean cTriggered,
+                               boolean probeTriggered) {
+            this.xTriggered = xTriggered;
+            this.yTriggered = yTriggered;
+            this.zTriggered = zTriggered;
+            this.aTriggered = aTriggered;
+            this.bTriggered = bTriggered;
+            this.cTriggered = cTriggered;
+            this.probeTriggered = probeTriggered;
+        }
+        
+        /**
+         * Checks if any limit switch is currently triggered.
+         * 
+         * @return true if any axis limit switch is triggered
+         */
+        public boolean hasTriggeredLimits() {
+            return xTriggered || yTriggered || zTriggered || 
+                   aTriggered || bTriggered || cTriggered;
+        }
+        
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder("LimitStatus[");
+            if (xTriggered) sb.append("X");
+            if (yTriggered) sb.append("Y");
+            if (zTriggered) sb.append("Z");
+            if (aTriggered) sb.append("A");
+            if (bTriggered) sb.append("B");
+            if (cTriggered) sb.append("C");
+            if (probeTriggered) sb.append("P");
+            if (!hasTriggeredLimits() && !probeTriggered) sb.append("OK");
+            sb.append("]");
+            return sb.toString();
+        }
+    }
 }

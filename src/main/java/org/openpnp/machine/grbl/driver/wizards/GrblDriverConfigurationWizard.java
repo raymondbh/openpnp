@@ -245,7 +245,8 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
         
         // Add Step Timing panel ($0/$1)
         JPanel stepTimingPanel = createStepTimingPanel();
-        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
         settingsPanel.add(stepTimingPanel, gbc);
 
         // Add Homing settings panel ($22-$27, $44-$46)
@@ -259,7 +260,9 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
         settingsPanel.add(limitPanel, gbc);
         
         // Add fill space at bottom to push content to top
-        gbc.gridy = 3; gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH;
+        gbc.gridy = 3;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
         settingsPanel.add(new JPanel(), gbc);
         
         grblMainPanel.add(settingsPanel, BorderLayout.CENTER);

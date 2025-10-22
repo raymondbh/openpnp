@@ -25,6 +25,7 @@ import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -220,12 +221,6 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
         Logger.debug("saveToModel() completed");
     }
 
-    // === PRIVATE UI CREATION METHODS ===
-
-    // ...existing code...
-
-    // === PRIVATE UI CREATION METHODS ===
-
     /**
      * Adds grblHAL-specific settings panels to the main configuration panel.
      * Creates step timing, homing, and limits configuration sections.
@@ -241,7 +236,7 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.NORTHWEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1.0; // Full width
+        gbc.weightx = 1.0;
         
         // Add Step Timing panel ($0/$1)
         JPanel stepTimingPanel = createStepTimingPanel();
@@ -278,7 +273,6 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
         // Step timing settings ($0/$1)
         stepPulseSpinner = new JSpinner(new SpinnerNumberModel(5.0, 1.0, 1000.0, 0.1));
         stepPulseSpinner.setPreferredSize(spinnerSize);
-        // Force spinner to always show 1 decimal place
         JSpinner.NumberEditor stepPulseEditor = new JSpinner.NumberEditor(stepPulseSpinner, "0.0");
         stepPulseSpinner.setEditor(stepPulseEditor);
         
@@ -332,7 +326,6 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
         zMaxTravelSpinner = new JSpinner(new SpinnerNumberModel(200.0, 1.0, 10000.0, 1.0));
         zMaxTravelSpinner.setPreferredSize(spinnerSize);
         
-        // Set initial tooltips
         updateTooltips();
     }
 
@@ -363,12 +356,10 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
                     FormSpecs.RELATED_GAP_ROWSPEC,
                 }));
         
-        // Step pulse time ($0)
         panel.add(new JLabel("Step Pulse:"), "2, 2, right, default");
         panel.add(stepPulseSpinner, "4, 2, fill, default");
         panel.add(new JLabel("μs"), "6, 2");
         
-        // Step idle delay ($1)
         panel.add(new JLabel("Step Idle Delay:"), "2, 4, right, default");
         panel.add(stepIdleDelaySpinner, "4, 4, fill, default");
         panel.add(new JLabel("ms"), "6, 4");
@@ -376,7 +367,7 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
         return panel;
     }
 
-        /**
+    /**
      * Creates the homing settings panel for $22-$27 and $44-$46 configuration.
      * Uses FormLayout for professional appearance and full-width layout.
      * 
@@ -397,43 +388,41 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
                     FormSpecs.RELATED_GAP_COLSPEC,
                     FormSpecs.DEFAULT_COLSPEC,
                     FormSpecs.RELATED_GAP_COLSPEC,
-                    ColumnSpec.decode("40dlu"), // Fixed width for units - tett etter spinner
+                    ColumnSpec.decode("40dlu"),
                 },
                 new RowSpec[] {
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Enable
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Direction label
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Direction checkboxes
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Passes label
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Pass headers
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Pass 1
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Pass 2
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Pass 3
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Feed rate
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Seek rate
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Debounce
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Pull-off
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
                 }));
         
         int row = 2;
         
-        // Homing enable ($22)
         panel.add(homingEnableCheckbox, "2, " + row + ", 7, 1");
         row += 2;
         
-        // Homing direction ($23)
         panel.add(new JLabel("Homing Direction:"), "2, " + row);
         row += 2;
         panel.add(homingInvertXCheckbox, "4, " + row);
@@ -441,56 +430,50 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
         panel.add(homingInvertZCheckbox, "8, " + row);
         row += 2;
         
-        // grblHAL homing passes section
         panel.add(new JLabel("Homing Passes (grblHAL):"), "2, " + row);
         row += 2;
         
-        // Pass headers
         panel.add(new JLabel(" X"), "4, " + row);
         panel.add(new JLabel(" Y"), "6, " + row);
         panel.add(new JLabel(" Z"), "8, " + row);
         row += 2;
         
-        // Pass 1 ($44)
         panel.add(new JLabel("Pass 1:"), "2, " + row + ", right, default");
         panel.add(homingPass1XCheckbox, "4, " + row);
         panel.add(homingPass1YCheckbox, "6, " + row);
         panel.add(homingPass1ZCheckbox, "8, " + row);
         row += 2;
         
-        // Pass 2 ($45)
         panel.add(new JLabel("Pass 2:"), "2, " + row + ", right, default");
         panel.add(homingPass2XCheckbox, "4, " + row);
         panel.add(homingPass2YCheckbox, "6, " + row);
         panel.add(homingPass2ZCheckbox, "8, " + row);
         row += 2;
         
-        // Pass 3 ($46)
         panel.add(new JLabel("Pass 3:"), "2, " + row + ", right, default");
         panel.add(homingPass3XCheckbox, "4, " + row);
         panel.add(homingPass3YCheckbox, "6, " + row);
         panel.add(homingPass3ZCheckbox, "8, " + row);
         row += 2;
         
-        // Homing speeds and settings ($24-$27) - units tett etter spinner
         panel.add(new JLabel("Feed Rate:"), "2, " + row + ", right, default");
         panel.add(homingFeedRateSpinner, "4, " + row + ", fill, default");
-        panel.add(new JLabel("mm/min"), "6, " + row); // Kolonne 6 i stedet for 10
+        panel.add(new JLabel("mm/min"), "6, " + row);
         row += 2;
         
         panel.add(new JLabel("Seek Rate:"), "2, " + row + ", right, default");
         panel.add(homingSeekRateSpinner, "4, " + row + ", fill, default");
-        panel.add(new JLabel("mm/min"), "6, " + row); // Kolonne 6 i stedet for 10
+        panel.add(new JLabel("mm/min"), "6, " + row);
         row += 2;
         
         panel.add(new JLabel("Debounce:"), "2, " + row + ", right, default");
         panel.add(homingDebounceSpinner, "4, " + row + ", fill, default");
-        panel.add(new JLabel("ms"), "6, " + row); // Kolonne 6 i stedet for 10
+        panel.add(new JLabel("ms"), "6, " + row);
         row += 2;
         
         panel.add(new JLabel("Pull-off:"), "2, " + row + ", right, default");
         panel.add(homingPulloffSpinner, "4, " + row + ", fill, default");
-        panel.add(new JLabel("mm"), "6, " + row); // Kolonne 6 i stedet for 10
+        panel.add(new JLabel("mm"), "6, " + row);
         
         return panel;
     }
@@ -510,83 +493,77 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
                     FormSpecs.RELATED_GAP_COLSPEC,
                     ColumnSpec.decode("max(120dlu;default)"),
                     FormSpecs.RELATED_GAP_COLSPEC,
-                    ColumnSpec.decode("100dlu"), // Fast bredde samme som andre spinnere
+                    ColumnSpec.decode("400dlu:grow"),  // INCREASED WIDTH for checkbox panel
                     FormSpecs.RELATED_GAP_COLSPEC,
-                    ColumnSpec.decode("30dlu"),
                 },
                 new RowSpec[] {
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Soft limits
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Hard limits
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Limit invert label
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Limit invert checkboxes
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // X max travel
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Y max travel
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
-                    FormSpecs.DEFAULT_ROWSPEC, // Z max travel
+                    FormSpecs.DEFAULT_ROWSPEC,
                     FormSpecs.RELATED_GAP_ROWSPEC,
                 }));
         
         int row = 2;
         
-        // Limits enable checkboxes ($20/$21)
         panel.add(softLimitsCheckbox, "2, " + row + ", 3, 1");
         row += 2;
         panel.add(hardLimitsCheckbox, "2, " + row + ", 3, 1");
         row += 2;
         
-        // Limit pin invert section ($5)
         panel.add(new JLabel("Limit Pin Invert:"), "2, " + row + ", right, default");
-        row += 2;
         
-        // Create sub-panel for invert checkboxes
-        JPanel invertPanel = new JPanel(new FormLayout(
-                new ColumnSpec[] {
-                    FormSpecs.DEFAULT_COLSPEC,
-                    FormSpecs.RELATED_GAP_COLSPEC,
-                    FormSpecs.DEFAULT_COLSPEC,
-                    FormSpecs.RELATED_GAP_COLSPEC,
-                    FormSpecs.DEFAULT_COLSPEC,
-                    FormSpecs.RELATED_GAP_COLSPEC,
-                    FormSpecs.DEFAULT_COLSPEC,
-                    FormSpecs.RELATED_GAP_COLSPEC,
-                    FormSpecs.DEFAULT_COLSPEC,
-                    FormSpecs.RELATED_GAP_COLSPEC,
-                    FormSpecs.DEFAULT_COLSPEC,
-                },
-                new RowSpec[] {
-                    FormSpecs.DEFAULT_ROWSPEC,
-                }));
+        // Use simple horizontal BoxLayout for checkboxes
+        JPanel invertPanel = new JPanel();
+        invertPanel.setLayout(new javax.swing.BoxLayout(invertPanel, javax.swing.BoxLayout.X_AXIS));
         
-        invertPanel.add(limitInvertXCheckbox, "1, 1");
-        invertPanel.add(limitInvertYCheckbox, "3, 1");
-        invertPanel.add(limitInvertZCheckbox, "5, 1");
-        invertPanel.add(limitInvertACheckbox, "7, 1");
-        invertPanel.add(limitInvertBCheckbox, "9, 1");
-        invertPanel.add(limitInvertCCheckbox, "11, 1");
+        invertPanel.add(limitInvertXCheckbox);
+        invertPanel.add(javax.swing.Box.createHorizontalStrut(10));
+        invertPanel.add(limitInvertYCheckbox);
+        invertPanel.add(javax.swing.Box.createHorizontalStrut(10));
+        invertPanel.add(limitInvertZCheckbox);
+        invertPanel.add(javax.swing.Box.createHorizontalStrut(10));
+        invertPanel.add(limitInvertACheckbox);
+        invertPanel.add(javax.swing.Box.createHorizontalStrut(10));
+        invertPanel.add(limitInvertBCheckbox);
+        invertPanel.add(javax.swing.Box.createHorizontalStrut(10));
+        invertPanel.add(limitInvertCCheckbox);
+        invertPanel.add(javax.swing.Box.createHorizontalGlue()); // Fill remaining space
         
         panel.add(invertPanel, "4, " + row);
         row += 2;
         
-        // Max travel settings ($130-$132) - fast bredde på spinnere
+        // Back to normal column spec for spinners
         panel.add(new JLabel("X Max Travel:"), "2, " + row + ", right, default");
-        panel.add(xMaxTravelSpinner, "4, " + row + ", fill, default"); // Bruker kolonne 4 med fast bredde
-        panel.add(new JLabel("mm"), "6, " + row);
+        
+        JPanel xTravelPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+        xTravelPanel.add(xMaxTravelSpinner);
+        xTravelPanel.add(new JLabel("mm"));
+        panel.add(xTravelPanel, "4, " + row);
         row += 2;
         
         panel.add(new JLabel("Y Max Travel:"), "2, " + row + ", right, default");
-        panel.add(yMaxTravelSpinner, "4, " + row + ", fill, default"); // Bruker kolonne 4 med fast bredde
-        panel.add(new JLabel("mm"), "6, " + row);
+        JPanel yTravelPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+        yTravelPanel.add(yMaxTravelSpinner);
+        yTravelPanel.add(new JLabel("mm"));
+        panel.add(yTravelPanel, "4, " + row);
         row += 2;
         
         panel.add(new JLabel("Z Max Travel:"), "2, " + row + ", right, default");
-        panel.add(zMaxTravelSpinner, "4, " + row + ", fill, default"); // Bruker kolonne 4 med fast bredde
-        panel.add(new JLabel("mm"), "6, " + row);
+        JPanel zTravelPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 5, 0));
+        zTravelPanel.add(zMaxTravelSpinner);
+        zTravelPanel.add(new JLabel("mm"));
+        panel.add(zTravelPanel, "4, " + row);
         
         return panel;
     }
@@ -595,7 +572,6 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
 
     /**
      * Sets up connection tracking to monitor GrblDriver connection state.
-     * Establishes property change listener for automatic GUI updates when connection changes.
      */
     private void setupConnectionTracking() {
         driver.addPropertyChangeListener("connected", evt -> {
@@ -614,23 +590,17 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
 
     /**
      * Updates component enabled states based on connection status.
-     * Called when connection state changes.
      */
     private void updateComponentStates() {
         boolean enabled = isConnected && settingsSync != null;
         
         if (homingEnableCheckbox != null) {
-            // Step timing components
             stepPulseSpinner.setEnabled(enabled);
             stepIdleDelaySpinner.setEnabled(enabled);
-
-            // Homing components
             homingEnableCheckbox.setEnabled(enabled);
             homingInvertXCheckbox.setEnabled(enabled);
             homingInvertYCheckbox.setEnabled(enabled);
             homingInvertZCheckbox.setEnabled(enabled);
-            
-            // grblHAL homing passes
             homingPass1XCheckbox.setEnabled(enabled);
             homingPass1YCheckbox.setEnabled(enabled);
             homingPass1ZCheckbox.setEnabled(enabled);
@@ -640,14 +610,10 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
             homingPass3XCheckbox.setEnabled(enabled);
             homingPass3YCheckbox.setEnabled(enabled);
             homingPass3ZCheckbox.setEnabled(enabled);
-            
-            // Homing speeds and timing
             homingFeedRateSpinner.setEnabled(enabled);
             homingSeekRateSpinner.setEnabled(enabled);
             homingDebounceSpinner.setEnabled(enabled);
             homingPulloffSpinner.setEnabled(enabled);
-            
-            // Limits components
             softLimitsCheckbox.setEnabled(enabled);
             hardLimitsCheckbox.setEnabled(enabled);
             limitInvertXCheckbox.setEnabled(enabled);
@@ -656,8 +622,6 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
             limitInvertACheckbox.setEnabled(enabled);
             limitInvertBCheckbox.setEnabled(enabled);
             limitInvertCCheckbox.setEnabled(enabled);
-            
-            // Max travel components
             xMaxTravelSpinner.setEnabled(enabled);
             yMaxTravelSpinner.setEnabled(enabled);
             zMaxTravelSpinner.setEnabled(enabled);
@@ -665,154 +629,48 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
     }
 
     /**
-     * Updates tooltips to reflect current connection status and grblHAL setting references.
-     * Provides contextual help and status information to users.
+     * Updates tooltips to reflect current connection status.
      */
     private void updateTooltips() {
         if (!isConnected) {
-            // Disconnected tooltips - red color for error state
-            stepPulseSpinner.setToolTipText("<html><b>Step Pulse ($0)</b><br>" +
-                    "<font color='red'>Connect to grblHAL controller to enable step pulse setting</font><br>" +
-                    "Step pulse time in microseconds, min: 1.0<br>" +
-                    "Step pulse length in microseconds<br>" +
-                    "Minimum depends on the processor and is typically in the range of 1 - 2.5<br>" +
-                    "The length has to be reduced from the default value of 5 when max. step rate exceed approximately 140 kHz</html>");
-            
-            stepIdleDelaySpinner.setToolTipText("<html><b>Step Idle Delay ($1)</b><br>" +
-                    "<font color='red'>Connect to grblHAL controller to enable step idle delay</font><br>" +
-                    "Step idle delay in milliseconds, max: 65535<br>" +
-                    "Sets a short hold delay when stopping to let dynamics settle before disabling steppers<br>" +
-                    "Value 255 keeps motors enabled</html>");
-
-            homingEnableCheckbox.setToolTipText("<html><b>Homing Enable ($22)</b><br>" +
-                    "<font color='red'>Connect to grblHAL controller to enable homing cycle</font><br>" +
-                    "Enables automatic homing cycle on startup or command<br>" +
-                    "Requires properly configured limit switches</html>");
-            
-            homingInvertXCheckbox.setToolTipText("<html><b>Homing Direction X ($23 bit 0)</b><br>" +
-                    "<font color='red'>Connect to grblHAL controller to enable homing direction</font><br>" +
-                    "Inverts X-axis homing direction<br>" +
-                    "Use if limit switch is at maximum position instead of minimum</html>");
-
-            // Add more disconnected tooltips for remaining components...
             setDisconnectedTooltips();
-            
         } else {
-            // Connected tooltips - green color for available features
-            stepPulseSpinner.setToolTipText("<html><b>Step Pulse ($0)</b><br>" +
-                    "<font color='green'>Available - connected to grblHAL controller</font><br>" +
-                    "Step pulse time in microseconds, min: 1.0<br>" +
-                    "Step pulse length in microseconds<br>" +
-                    "Minimum depends on the processor and is typically in the range of 1 - 2.5<br>" +
-                    "The length has to be reduced from the default value of 5 when max. step rate exceed approximately 140 kHz</html>");
-            
-            stepIdleDelaySpinner.setToolTipText("<html><b>Step Idle Delay ($1)</b><br>" +
-                    "<font color='green'>Available - connected to grblHAL controller</font><br>" +
-                    "Step idle delay in milliseconds, max: 65535<br>" +
-                    "Sets a short hold delay when stopping to let dynamics settle before disabling steppers<br>" +
-                    "Value 255 keeps motors enabled</html>");
-
-            homingEnableCheckbox.setToolTipText("<html><b>Homing Enable ($22)</b><br>" +
-                    "<font color='green'>Available - connected to grblHAL controller</font><br>" +
-                    "Enables automatic homing cycle on startup or command<br>" +
-                    "Requires properly configured limit switches</html>");
-            
-            homingInvertXCheckbox.setToolTipText("<html><b>Homing Direction X ($23 bit 0)</b><br>" +
-                    "<font color='green'>Available - connected to grblHAL controller</font><br>" +
-                    "Inverts X-axis homing direction<br>" +
-                    "Use if limit switch is at maximum position instead of minimum</html>");
-
-            // Add more connected tooltips for remaining components...
             setConnectedTooltips();
         }
     }
 
-    /**
-     * Sets disconnected tooltips for all remaining components.
-     */
     private void setDisconnectedTooltips() {
-        // Homing direction tooltips
-        homingInvertYCheckbox.setToolTipText("<html><b>Homing Direction Y ($23 bit 1)</b><br>" +
-                "<font color='red'>Connect to grblHAL controller to enable homing direction</font><br>" +
-                "Inverts Y-axis homing direction</html>");
-        
-        homingInvertZCheckbox.setToolTipText("<html><b>Homing Direction Z ($23 bit 2)</b><br>" +
-                "<font color='red'>Connect to grblHAL controller to enable homing direction</font><br>" +
-                "Inverts Z-axis homing direction</html>");
-
-        // Homing passes tooltips  
-        homingPass1XCheckbox.setToolTipText("<html><b>Homing Pass 1 X ($44 bit 0)</b><br>" +
-                "<font color='red'>Connect to grblHAL controller to enable multi-pass homing</font><br>" +
-                "Include X-axis in homing pass 1 (grblHAL feature)</html>");
-        
-        // ... continue for all other components with red disconnect message
-        
-        // Limits tooltips
-        softLimitsCheckbox.setToolTipText("<html><b>Soft Limits Enable ($20)</b><br>" +
-                "<font color='red'>Connect to grblHAL controller to enable soft limits</font><br>" +
-                "Prevents moves beyond max travel distances</html>");
-                
-        hardLimitsCheckbox.setToolTipText("<html><b>Hard Limits Enable ($21)</b><br>" +
-                "<font color='red'>Connect to grblHAL controller to enable hard limits</font><br>" +
-                "Emergency stop when limit switches triggered</html>");
+        stepPulseSpinner.setToolTipText("<html><b>Step Pulse ($0)</b><br>" +
+                "<font color='red'>Connect to grblHAL controller</font></html>");
+        stepIdleDelaySpinner.setToolTipText("<html><b>Step Idle Delay ($1)</b><br>" +
+                "<font color='red'>Connect to grblHAL controller</font></html>");
     }
 
-    /**
-     * Sets connected tooltips for all remaining components.
-     */
     private void setConnectedTooltips() {
-        // Homing direction tooltips
-        homingInvertYCheckbox.setToolTipText("<html><b>Homing Direction Y ($23 bit 1)</b><br>" +
-                "<font color='green'>Available - connected to grblHAL controller</font><br>" +
-                "Inverts Y-axis homing direction</html>");
-        
-        homingInvertZCheckbox.setToolTipText("<html><b>Homing Direction Z ($23 bit 2)</b><br>" +
-                "<font color='green'>Available - connected to grblHAL controller</font><br>" +
-                "Inverts Z-axis homing direction</html>");
-
-        // Homing passes tooltips
-        homingPass1XCheckbox.setToolTipText("<html><b>Homing Pass 1 X ($44 bit 0)</b><br>" +
-                "<font color='green'>Available - connected to grblHAL controller</font><br>" +
-                "Include X-axis in homing pass 1 (grblHAL feature)</html>");
-        
-        // ... continue for all other components with green connected message
-        
-        // Limits tooltips
-        softLimitsCheckbox.setToolTipText("<html><b>Soft Limits Enable ($20)</b><br>" +
-                "<font color='green'>Available - connected to grblHAL controller</font><br>" +
-                "Prevents moves beyond max travel distances</html>");
-                
-        hardLimitsCheckbox.setToolTipText("<html><b>Hard Limits Enable ($21)</b><br>" +
-                "<font color='green'>Available - connected to grblHAL controller</font><br>" +
-                "Emergency stop when limit switches triggered</html>");
+        stepPulseSpinner.setToolTipText("<html><b>Step Pulse ($0)</b><br>" +
+                "<font color='green'>Available - connected</font></html>");
+        stepIdleDelaySpinner.setToolTipText("<html><b>Step Idle Delay ($1)</b><br>" +
+                "<font color='green'>Available - connected</font></html>");
     }
 
     /**
      * Synchronizes settings from grblHAL controller to driver properties.
-     * Reads all supported grblHAL settings and updates corresponding driver properties.
      */
     private void syncControllerToDriverProperties() {
         try {
-            Logger.info("Loading controller settings and syncing to driver properties...");
+            Logger.info("Loading controller settings...");
             
-            // Read step timing settings ($0/$1)
             String stepPulseStr = settingsSync.getControllerSetting(0);
             String stepIdleDelayStr = settingsSync.getControllerSetting(1);
-            
-            // Read homing settings ($22-$27)
             String homingEnabledStr = settingsSync.getControllerSetting(22);
             String homingDirectionStr = settingsSync.getControllerSetting(23);
             String homingFeedRateStr = settingsSync.getControllerSetting(24);
             String homingSeekRateStr = settingsSync.getControllerSetting(25);
             String homingDebounceStr = settingsSync.getControllerSetting(26);
             String homingPulloffStr = settingsSync.getControllerSetting(27);
-            
-            // Read grblHAL homing passes ($44-$46)
             String homingPass1Str = settingsSync.getControllerSetting(44);
             String homingPass2Str = settingsSync.getControllerSetting(45);
             String homingPass3Str = settingsSync.getControllerSetting(46);
-            
-            // Read limits settings ($5/$20/$21/$130-$132)
             String limitPinInvertStr = settingsSync.getControllerSetting(5);
             String softLimitsStr = settingsSync.getControllerSetting(20);
             String hardLimitsStr = settingsSync.getControllerSetting(21);
@@ -820,11 +678,9 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
             String yMaxTravelStr = settingsSync.getControllerSetting(131);
             String zMaxTravelStr = settingsSync.getControllerSetting(132);
             
-            // Update step timing properties
-            updateIntProperty(stepPulseStr, "stepPulse", driver::setStepPulse);
+            updateDoubleProperty(stepPulseStr, "stepPulse", driver::setStepPulse);
             updateIntProperty(stepIdleDelayStr, "stepIdleDelay", driver::setStepIdleDelay);
-
-            // Update homing properties
+            
             if (homingEnabledStr != null) {
                 driver.setHomingEnabled("1".equals(homingEnabledStr));
             }
@@ -834,13 +690,10 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
             updateDoubleProperty(homingSeekRateStr, "homingSeekRate", driver::setHomingSeekRate);
             updateIntProperty(homingDebounceStr, "homingDebounce", driver::setHomingDebounce);
             updateDoubleProperty(homingPulloffStr, "homingPulloff", driver::setHomingPulloff);
-            
-            // Update grblHAL homing passes
             updateIntProperty(homingPass1Str, "homingPass1", driver::setHomingPass1);
             updateIntProperty(homingPass2Str, "homingPass2", driver::setHomingPass2);
             updateIntProperty(homingPass3Str, "homingPass3", driver::setHomingPass3);
             
-            // Update limits properties
             if (softLimitsStr != null) {
                 driver.setSoftLimitsEnabled("1".equals(softLimitsStr));
             }
@@ -853,16 +706,15 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
             updateDoubleProperty(yMaxTravelStr, "yMaxTravel", driver::setYMaxTravel);
             updateDoubleProperty(zMaxTravelStr, "zMaxTravel", driver::setZMaxTravel);
             
-            Logger.info("Controller settings loaded and synced to driver properties");
+            Logger.info("Controller settings loaded");
             
         } catch (Exception e) {
-            Logger.warn("Failed to sync controller settings to driver properties: {}", e.getMessage());
+            Logger.warn("Failed to sync controller settings: {}", e.getMessage());
         }
     }
 
     /**
      * Synchronizes settings from driver properties to grblHAL controller.
-     * Writes all modified driver properties to corresponding grblHAL settings.
      */
     private void syncDriverPropertiesToController() {
         try {
@@ -870,24 +722,17 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
             
             int settingsWritten = 0;
             
-            // Sync step timing settings first ($0/$1)
             settingsWritten += writeSettingIfChanged(0, String.valueOf(driver.getStepPulse()), "stepPulse");
             settingsWritten += writeSettingIfChanged(1, String.valueOf(driver.getStepIdleDelay()), "stepIdleDelay");
-
-            // Sync homing settings ($22-$27)
             settingsWritten += writeSettingIfChanged(22, driver.isHomingEnabled() ? "1" : "0", "homingEnabled");
             settingsWritten += writeSettingIfChanged(23, String.valueOf(driver.getHomingDirectionMask()), "homingDirection");
             settingsWritten += writeSettingIfChanged(24, String.valueOf(driver.getHomingFeedRate()), "homingFeedRate");
             settingsWritten += writeSettingIfChanged(25, String.valueOf(driver.getHomingSeekRate()), "homingSeekRate");
             settingsWritten += writeSettingIfChanged(26, String.valueOf(driver.getHomingDebounce()), "homingDebounce");
             settingsWritten += writeSettingIfChanged(27, String.valueOf(driver.getHomingPulloff()), "homingPulloff");
-            
-            // Sync grblHAL homing passes ($44-$46)
             settingsWritten += writeSettingIfChanged(44, String.valueOf(driver.getHomingPass1()), "homingPass1");
             settingsWritten += writeSettingIfChanged(45, String.valueOf(driver.getHomingPass2()), "homingPass2");
             settingsWritten += writeSettingIfChanged(46, String.valueOf(driver.getHomingPass3()), "homingPass3");
-            
-            // Sync limits settings ($5/$20/$21/$130-$132)
             settingsWritten += writeSettingIfChanged(20, driver.isSoftLimitsEnabled() ? "1" : "0", "softLimits");
             settingsWritten += writeSettingIfChanged(21, driver.isHardLimitsEnabled() ? "1" : "0", "hardLimits");
             settingsWritten += writeSettingIfChanged(5, String.valueOf(driver.getLimitPinInvertMask()), "limitPinInvert");
@@ -898,23 +743,14 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
             if (settingsWritten > 0) {
                 Logger.info("Wrote {} settings to controller", settingsWritten);
             } else {
-                Logger.info("No settings changed - nothing written to controller");
+                Logger.info("No settings changed");
             }
             
         } catch (Exception e) {
-            Logger.warn("Failed to sync driver properties to controller: {}", e.getMessage());
+            Logger.warn("Failed to sync driver properties: {}", e.getMessage());
         }
     }
 
-    // === PRIVATE HELPER METHODS ===
-
-    /**
-     * Updates an integer property from string value with error handling.
-     * 
-     * @param valueStr the string value from controller
-     * @param propertyName the property name for logging  
-     * @param setter the setter method to call
-     */
     private void updateIntProperty(String valueStr, String propertyName, java.util.function.IntConsumer setter) {
         if (valueStr != null) {
             try {
@@ -926,13 +762,6 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
         }
     }
 
-    /**
-     * Updates a double property from string value with error handling.
-     * 
-     * @param valueStr the string value from controller
-     * @param propertyName the property name for logging
-     * @param setter the setter method to call
-     */
     private void updateDoubleProperty(String valueStr, String propertyName, java.util.function.DoubleConsumer setter) {
         if (valueStr != null) {
             try {
@@ -944,14 +773,6 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
         }
     }
 
-    /**
-     * Writes setting to controller only if it has changed from current value.
-     * 
-     * @param settingId the grblHAL setting ID
-     * @param newValue the new value to write
-     * @param settingName the setting name for logging
-     * @return 1 if setting was written, 0 if unchanged
-     */
     private int writeSettingIfChanged(int settingId, String newValue, String settingName) {
         try {
             String currentValue = settingsSync.getControllerSetting(settingId);
@@ -970,13 +791,6 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
         }
     }
     
-    /**
-     * Compares two setting values with tolerance for floating point numbers.
-     * 
-     * @param value1 the first value to compare
-     * @param value2 the second value to compare  
-     * @return true if values are equal (within tolerance for numbers)
-     */
     private boolean valuesEqual(String value1, String value2) {
         if (value1 == null || value2 == null) {
             return value1 == value2;
@@ -985,9 +799,8 @@ public class GrblDriverConfigurationWizard extends AbstractConfigurationWizard {
         try {
             double num1 = Double.parseDouble(value1);
             double num2 = Double.parseDouble(value2);
-            return Math.abs(num1 - num2) < 0.001; // Small tolerance for floating point
+            return Math.abs(num1 - num2) < 0.001;
         } catch (NumberFormatException e) {
-            // Not numbers, use string comparison
             return value1.equals(value2);
         }
     }

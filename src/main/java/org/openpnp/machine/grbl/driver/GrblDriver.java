@@ -30,6 +30,7 @@ import org.openpnp.machine.reference.driver.GcodeDriver;
 import org.openpnp.spi.PropertySheetHolder;
 import org.openpnp.util.Collect;
 import org.openpnp.machine.grbl.driver.wizards.GrblDriverConfigurationWizard;
+import org.openpnp.machine.grbl.driver.wizards.GrblDriverRealTimeWizard;
 import org.openpnp.machine.grbl.gui.GrblSyncDialog;
 import org.openpnp.machine.grbl.wizards.GrblSettingsSync;
 import org.openpnp.machine.grbl.wizards.SettingDiscrepancy;
@@ -116,11 +117,12 @@ public class GrblDriver extends GcodeDriver {
         // Get parent sheets from GcodeDriver (med Apply/Reset!)
         PropertySheetHolder.PropertySheet[] parentSheets = super.getPropertySheets();
         
-        // Add our Grbl-specific sheet
+        // Add our Grbl-specific sheets - Settings + Real-time Status
         return Collect.concat(
             parentSheets,
             new PropertySheetHolder.PropertySheet[] {
-                new PropertySheetWizardAdapter(new GrblDriverConfigurationWizard(this), "Grbl Settings")
+                new PropertySheetWizardAdapter(new GrblDriverConfigurationWizard(this), "Grbl Settings"),
+                new PropertySheetWizardAdapter(new GrblDriverRealTimeWizard(this), "Real-time Status")
             }
         );
     }
@@ -259,7 +261,13 @@ public class GrblDriver extends GcodeDriver {
     }
 
     /**
-     * Check if the driver is currently connected to the controller
+     * Check if the driver is currently connected to the controller.
+     * 
+     * <p>Uses the parent GcodeDriver's connected field to track connection status.
+     * The connected field is set to true after successful connection and false
+     * when disconnected.</p>
+     * 
+     * @return true if driver is connected
      */
     public boolean isConnected() {
         return connected;
@@ -1201,8 +1209,23 @@ public class GrblDriver extends GcodeDriver {
         }
         
         try {
-            //String response = sendCommand("?", 200);
-            String response = "ok"; // Temporarily disable to avoid flooding log
+            // Send ? command
+            sendCommand("?", 200);
+            
+            // Receive all responses
+            List<Line> responses = receiveResponses();
+            
+            // grbl returns status in first response line that starts with '<'
+            String response = "";
+            if (responses != null && !responses.isEmpty()) {
+                for (Line line : responses) {
+                    if (line.getLine().startsWith("<")) {
+                        response = line.getLine();
+                        break;
+                    }
+                }
+            }
+            
             return parseLimitSwitchStatus(response);
             
         } catch (Exception e) {

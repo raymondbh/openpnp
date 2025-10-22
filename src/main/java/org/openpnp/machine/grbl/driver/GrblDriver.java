@@ -1333,14 +1333,14 @@ public class GrblDriver extends GcodeDriver {
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder("LimitStatus[");
-            if (xTriggered) sb.append("X");
-            if (yTriggered) sb.append("Y");
-            if (zTriggered) sb.append("Z");
-            if (aTriggered) sb.append("A");
-            if (bTriggered) sb.append("B");
-            if (cTriggered) sb.append("C");
-            if (probeTriggered) sb.append("P");
-            if (!hasTriggeredLimits() && !probeTriggered) sb.append("OK");
+            if (xTriggered){ sb.append("X"); }
+            if (yTriggered){ sb.append("Y"); }
+            if (zTriggered){ sb.append("Z"); }
+            if (aTriggered){ sb.append("A"); }
+            if (bTriggered){ sb.append("B"); }
+            if (cTriggered){ sb.append("C"); }
+            if (probeTriggered){ sb.append("P"); }
+            if (!hasTriggeredLimits() && !probeTriggered){ sb.append("OK"); }
             sb.append("]");
             return sb.toString();
         }

@@ -48,6 +48,7 @@ import org.openpnp.model.Solutions.Milestone;
 import org.openpnp.model.Solutions.Severity;
 import org.openpnp.model.Solutions.State;
 import org.openpnp.spi.Actuator;
+import org.openpnp.spi.Axis;
 import org.openpnp.spi.ControllerAxis;
 import org.openpnp.spi.Driver;
 import org.openpnp.spi.Driver.MotionControlType;
@@ -79,7 +80,8 @@ public class GcodeDriverSolutions implements Solutions.Subject {
         RepRapFirmware,
         TinyG,
         Marlin,
-        Grbl;
+        Grbl,
+        GrblHAL;
 
         boolean isSmoothie() {
             return this == Smoothieware || this == SmoothiewareGrblSyntax || this == SmoothiewareChmt;
@@ -98,7 +100,7 @@ public class GcodeDriverSolutions implements Solutions.Subject {
                 return FlowControl.XonXoff;
             }
             // Default to typical driver setting.
-            return (this == TinyG || this == Grbl || this == SmoothiewareChmt) ? FlowControl.Off : FlowControl.RtsCts;
+            return (this == TinyG || this == Grbl || this == SmoothiewareChmt || this == GrblHAL) ? FlowControl.Off : FlowControl.RtsCts;
         }
     }
 
@@ -202,7 +204,7 @@ public class GcodeDriverSolutions implements Solutions.Subject {
                         "Firmware was not detected ("+
                                 (machine.isEnabled() ? 
                                         (gcodeDriver.isSpeakingGcode() ? "failure, check log" : "controller may not speak Gcode") 
-                                        : "machine is disabled")+"). Only if the firmware is know, can Issues & Solutions generate suggested G-code for your machine configuration.", 
+                                        : "machine is disabled")+"). Only if the firmware is known, can Issues & Solutions generate suggested G-code for your machine configuration.",
                                 "Retry the detection by connecting to the controller or assume a generic controller.", 
                                 Severity.Fundamental,
                         "https://www.reprap.org/wiki/G-code#M115:_Get_Firmware_Version_and_Capabilities") {
@@ -358,6 +360,66 @@ public class GcodeDriverSolutions implements Solutions.Subject {
                 }
                 else if (gcodeDriver.getFirmwareProperty("FIRMWARE_NAME", "").contains("Grbl")) {
                     firmware = FirmwareType.Grbl;
+                }
+                else if (gcodeDriver.getFirmwareProperty("FIRMWARE_NAME", "").contains("grblHAL")) {
+                    firmware = FirmwareType.GrblHAL;
+                    
+                        // Suggest upgrade to GrblDriver for enhanced grblHAL support
+                        if (!(gcodeDriver instanceof org.openpnp.machine.grbl.driver.GrblDriver)) {
+                            solutions.add(new Solutions.Issue(
+                                    gcodeDriver, 
+                                    "grblHAL firmware detected! Enhanced GrblDriver available with advanced features.", 
+                                    "Upgrade to GrblDriver for automatic settings synchronization and grblHAL-specific features.", 
+                                    Severity.Suggestion,
+                                    "https://github.com/openpnp/openpnp/wiki/GrblDriver") {
+
+                                @Override
+                                public void setState(Solutions.State state) throws Exception {
+                                    if (state == Solutions.State.Solved) {
+                                        convertToGrblDriver(gcodeDriver);
+                                    }
+                                    else if (getState() == Solutions.State.Solved) {
+                                        // Place the old one back (from the captured gcodeDriver).
+                                        replaceDriver(gcodeDriver);
+                                    }
+                                    super.setState(state);
+                                }
+                                
+                                @Override
+                                public String getExtendedDescription() {
+                                    return "<html>" +
+                                            "<h3>Enhanced grblHAL Support</h3>" +
+                                            "<p>The GrblDriver provides:</p>" +
+                                            "<ul>" +
+                                            "<li>Automatic settings synchronization between OpenPnP and grblHAL controller</li>" +
+                                            "<li>Advanced homing configuration with multi-pass support</li>" +
+                                            "<li>Improved compatibility with grblHAL-specific features</li>" +
+                                            "<li>Bi-directional settings management</li>" +
+                                            "</ul>" +
+                                            "<p>Your current settings will be preserved during the upgrade.</p>" +
+                                            "</html>";
+                                }
+                            });
+                        }
+                    
+                    // enable backlash escaped characters to send ctrl-c etc.
+                    if(!gcodeDriver.isBackslashEscapedCharactersEnabled()) {
+
+                        solutions.add(new Solutions.Issue(
+                                gcodeDriver,
+                                "Backlash escaped characters needed for Grbl dialects.",
+                                "Enable backlash escaped characters to support \\u0000 notation in commands."
+                                        + "This is needed to send ctrl-c or ctrl-x to the controller firmware.",
+                                Severity.Warning,
+                                "https://github.com/gnea/grbl/blob/master/doc/markdown/commands.md#ascii-realtime-command-descriptions") {
+
+                            @Override
+                            public void setState(Solutions.State state) throws Exception {
+                                gcodeDriver.setBackslashEscapedCharactersEnabled((state == Solutions.State.Solved));
+                                super.setState(state);
+                            }
+                        });
+                    }
                 }
                 else if (gcodeDriver.getFirmwareProperty("FIRMWARE_NAME", "").contains("GcodeServer")) {
                     firmware = FirmwareType.Generic;
@@ -569,6 +631,172 @@ public class GcodeDriverSolutions implements Solutions.Subject {
                                     super.setState(state);
                                 }
                             });
+                        }
+                    }
+                }
+
+                // Check for axis conversion opportunities when using GrblDriver
+                if (gcodeDriver instanceof org.openpnp.machine.grbl.driver.GrblDriver && 
+                    solutions.isTargeting(Milestone.Connect)) {
+                    
+                    org.openpnp.machine.grbl.driver.GrblDriver grblDriver = (org.openpnp.machine.grbl.driver.GrblDriver) gcodeDriver;
+
+                    // Find all axes that use this driver and could be converted to GrblControllerAxis
+                    for (ControllerAxis axis : new AxesLocation(machine).drivenBy(gcodeDriver).getControllerAxes()) {
+                        if (axis instanceof ReferenceControllerAxis && 
+                            !(axis instanceof org.openpnp.machine.grbl.axis.GrblControllerAxis)) {
+                            
+                            solutions.add(new Solutions.Issue(
+                                    axis,
+                                    "Axis '" + axis.getName() + "' can be upgraded to GrblControllerAxis for enhanced grblHAL synchronization.",
+                                    "Convert to GrblControllerAxis for automatic settings sync with grblHAL controller.",
+                                    Severity.Suggestion,
+                                    "https://github.com/openpnp/openpnp/wiki/GrblDriver") {
+
+                                @Override
+                                public void setState(Solutions.State state) throws Exception {
+                                    if (state == Solutions.State.Solved) {
+                                        convertSingleAxisToGrbl(axis, (org.openpnp.machine.grbl.driver.GrblDriver) gcodeDriver);
+                                    }
+                                    else if (getState() == Solutions.State.Solved) {
+                                        // Convert back to ReferenceControllerAxis
+                                        convertSingleAxisFromGrbl(axis, (org.openpnp.machine.grbl.driver.GrblDriver) gcodeDriver);
+                                    }
+                                    super.setState(state);
+                                }
+                                
+                                @Override
+                                public String getExtendedDescription() {
+                                    return "<html>" +
+                                            "<h3>Enhanced Axis Synchronization</h3>" +
+                                            "<p>Converting axis '" + axis.getName() + "' to GrblControllerAxis provides:</p>" +
+                                            "<ul>" +
+                                            "<li><b>Automatic synchronization</b> of steps/mm, feedrate, and acceleration settings</li>" +
+                                            "<li><b>Bi-directional sync</b> - changes made in OpenPnP sync to controller and vice versa</li>" +
+                                            "<li><b>Real-time updates</b> when settings change</li>" +
+                                            "<li><b>Consistency</b> between OpenPnP configuration and controller memory</li>" +
+                                            "</ul>" +
+                                            "<p><b>Note:</b> Only convert axes that are controlled by the grblHAL controller. " +
+                                            "Axes on other controllers should remain as ReferenceControllerAxis.</p>" +
+                                            "<p>Current axis driver: " + axis.getDriver().getName() + "</p>" +
+                                            "</html>";
+                                }
+                            });
+                        }
+                    }
+
+                    if (grblDriver.getSettingsSync() != null && 
+                        (grblDriver.getSettingsSync().isInputPinInvertSupported() || 
+                         grblDriver.getSettingsSync().isOutputPinInvertSupported())) {
+                        
+                        // Find actuators that could benefit from GrblActuator conversion
+                        for (Actuator actuator : machine.getActuators()) {
+                            if (actuator instanceof org.openpnp.machine.reference.ReferenceActuator && 
+                                !(actuator instanceof org.openpnp.machine.grbl.actuator.GrblActuator) &&
+                                actuator.getDriver() == grblDriver) {
+                                
+                                solutions.add(new Solutions.Issue(
+                                        actuator, 
+                                        "Actuator '" + actuator.getName() + "' can be upgraded to GrblActuator for IO pin invert control.",
+                                        "Convert to GrblActuator for enhanced grblHAL pick & place support.",
+                                        Severity.Suggestion,
+                                        "https://github.com/openpnp/openpnp/wiki/GrblDriver#grblactuator") {
+                                    
+                                    @Override
+                                    public void setState(Solutions.State state) throws Exception {
+                                        if (state == Solutions.State.Solved) {
+                                            convertToGrblActuator((org.openpnp.machine.reference.ReferenceActuator) actuator, grblDriver);
+                                        }
+                                        else if (getState() == Solutions.State.Solved) {
+                                            // Convert back to ReferenceActuator  
+                                            convertFromGrblActuator(actuator, grblDriver);
+                                        }
+                                        super.setState(state);
+                                    }
+                                    
+                                    @Override
+                                    public String getExtendedDescription() {
+                                        return "<html><body>" +
+                                               "<p><strong>GrblActuator Enhancement Available</strong></p>" +
+                                               "<p>Your actuator <strong>" + actuator.getName() + "</strong> can be enhanced for grblHAL pick & place operations.</p>" +
+                                               "<br>" +
+                                               "<p><strong>GrblActuator provides:</strong></p>" +
+                                               "<ul>" +
+                                               "<li><strong>IO Pin Invert Control:</strong> Individual control of input ($370) and output ($372) pin polarity</li>" +
+                                               "<li><strong>Actuator Type Selection:</strong> Choose Output Only, Input Only, or Input/Output operation</li>" +
+                                               "<li><strong>Auto-Sync:</strong> Automatically synchronizes settings with grblHAL controller</li>" +
+                                               "<li><strong>Connection Aware:</strong> GUI adapts based on controller connection status</li>" +
+                                               "<li><strong>Pick & Place Optimized:</strong> Designed for vacuum pumps, blow-off valves, LED lighting, etc.</li>" +
+                                               "</ul>" +
+                                               "<br>" +
+                                               "<p><strong>Current Configuration:</strong></p>" +
+                                               "<ul>" +
+                                               "<li>Actuator Name: " + actuator.getName() + "</li>" +
+                                               "<li>IO Index: " + ((org.openpnp.machine.reference.ReferenceActuator) actuator).getIndex() + "</li>" +
+                                               "<li>Driver: " + grblDriver.getName() + "</li>" +
+                                               "</ul>" +
+                                               "<br>" +
+                                               "<p><em>Click Solve to convert this actuator to GrblActuator with IO pin invert support.</em></p>" +
+                                               "</body></html>";
+                                    }
+                                });
+                            }
+                        }
+
+                        // Find head-level actuators that could benefit from GrblActuator conversion
+                        for (Head head : machine.getHeads()) {
+                            for (Actuator actuator : head.getActuators()) {
+                                if (actuator instanceof org.openpnp.machine.reference.ReferenceActuator && 
+                                    !(actuator instanceof org.openpnp.machine.grbl.actuator.GrblActuator) &&
+                                    actuator.getDriver() == grblDriver) {
+                                    
+                                    solutions.add(new Solutions.Issue(
+                                            actuator, 
+                                            "Head actuator '" + actuator.getName() + "' on head '" + head.getName() + "' can be upgraded to GrblActuator for IO pin invert control.",
+                                            "Convert to GrblActuator for enhanced grblHAL pick & place support.",
+                                            Severity.Suggestion,
+                                            "https://github.com/openpnp/openpnp/wiki/GrblDriver#grblactuator") {
+                                        
+                                        @Override
+                                        public void setState(Solutions.State state) throws Exception {
+                                            if (state == Solutions.State.Solved) {
+                                                convertToGrblActuator((org.openpnp.machine.reference.ReferenceActuator) actuator, grblDriver);
+                                            }
+                                            else if (getState() == Solutions.State.Solved) {
+                                                convertFromGrblActuator(actuator, grblDriver);
+                                            }
+                                            super.setState(state);
+                                        }
+                                        
+                                        @Override
+                                        public String getExtendedDescription() {
+                                            return "<html><body>" +
+                                                   "<p><strong>GrblActuator Enhancement Available</strong></p>" +
+                                                   "<p>Your head actuator <strong>" + actuator.getName() + "</strong> on head <strong>" + head.getName() + "</strong> can be enhanced for grblHAL pick & place operations.</p>" +
+                                                   "<br>" +
+                                                   "<p><strong>GrblActuator provides:</strong></p>" +
+                                                   "<ul>" +
+                                                   "<li><strong>IO Pin Invert Control:</strong> Individual control of input ($370) and output ($372) pin polarity</li>" +
+                                                   "<li><strong>Actuator Type Selection:</strong> Choose Output Only, Input Only, or Input/Output operation</li>" +
+                                                   "<li><strong>Auto-Sync:</strong> Automatically synchronizes settings with grblHAL controller</li>" +
+                                                   "<li><strong>Connection Aware:</strong> GUI adapts based on controller connection status</li>" +
+                                                   "<li><strong>Pick & Place Optimized:</strong> Designed for vacuum pumps, blow-off valves, LED lighting, etc.</li>" +
+                                                   "</ul>" +
+                                                   "<br>" +
+                                                   "<p><strong>Current Configuration:</strong></p>" +
+                                                   "<ul>" +
+                                                   "<li>Actuator Name: " + actuator.getName() + "</li>" +
+                                                   "<li>Location: Head '" + head.getName() + "'</li>" +
+                                                   "<li>IO Index: " + ((org.openpnp.machine.reference.ReferenceActuator) actuator).getIndex() + "</li>" +
+                                                   "<li>Driver: " + grblDriver.getName() + "</li>" +
+                                                   "</ul>" +
+                                                   "<br>" +
+                                                   "<p><em>Click Solve to convert this head actuator to GrblActuator with IO pin invert support.</em></p>" +
+                                                   "</body></html>";
+                                        }
+                                    });
+                                }
+                            }
                         }
                     }
                 }
@@ -857,12 +1085,15 @@ public class GcodeDriverSolutions implements Solutions.Subject {
                     if (dialect == FirmwareType.TinyG) {
                         commandBuilt = "^tinyg .* err:.*";
                     }
+                    else if (dialect == FirmwareType.GrblHAL) {
+                        commandBuilt = "^(error|<ALARM|\\[MSG).*";
+                    }
                     else {
                         //commandBuilt = "^!!*";
                     }
                     break;
                 case HOME_COMMAND:
-                    if (dialect == FirmwareType.SmoothiewareGrblSyntax || dialect == FirmwareType.Grbl) {
+                    if (dialect == FirmwareType.SmoothiewareGrblSyntax || dialect == FirmwareType.Grbl || dialect == FirmwareType.GrblHAL) {
                         commandBuilt = "$H ; Home all axes";
                     }
                     else if (dialect == FirmwareType.TinyG) {
@@ -1046,6 +1277,37 @@ public class GcodeDriverSolutions implements Solutions.Subject {
                         commandBuilt = "";
                     }
                     break;
+                case ACTUATE_BOOLEAN_COMMAND:
+                    if (dialect == FirmwareType.GrblHAL)
+                    {
+                        commandBuilt = "M42 P{Index} S{True:1}{False:0} ; Set or reset boolean actuator";
+                    }
+                    else
+                    {
+                        commandBuilt = "";
+                    }
+                    break;
+                case ACTUATOR_READ_COMMAND:
+                    if (dialect == FirmwareType.GrblHAL)
+                    {
+                        commandBuilt = "M143 P{Index} ; Read boolean actuator, replace P with E for analog read";
+                    }
+                    else
+                    {
+                        commandBuilt = "";
+                    }
+                    break;
+                case ACTUATOR_READ_REGEX:
+                    if (dialect == FirmwareType.GrblHAL)
+                    {
+                        commandBuilt = "^(A|D).:(?<Value>-?\\d+).*";
+                    }
+                    else
+                    {
+                        commandBuilt = "";
+                    }
+                    break;
+
             }
             suggestGcodeCommand(gcodeDriver, null, solutions, commandType, commandBuilt, commandModified,
                     disallowHeadMountables, rationale);
@@ -1222,6 +1484,272 @@ public class GcodeDriverSolutions implements Solutions.Subject {
         gcodeDriver.setCommunicationsType(CommunicationsType.tcp);
         gcodeDriver.setIpAddress("GcodeServer");
         replaceDriver(gcodeDriver);
+    }
+
+    /**
+     * Convert an existing GcodeDriver to a GrblDriver while keeping all settings and 
+     * Axis/Actuator assignments. 
+     * 
+     * @param gcodeDriver
+     * @throws Exception
+     */
+    public static void convertToGrblDriver(GcodeDriver gcodeDriver) throws Exception {
+        // Serialize the current driver
+        Serializer serOut = XmlSerialize.createSerializer();
+        StringWriter sw = new StringWriter();
+        serOut.write(gcodeDriver, sw);
+        String driverSerialized = sw.toString();
+        
+        // Replace class name
+        driverSerialized = driverSerialized.replace(
+                gcodeDriver.getClass().getCanonicalName(), 
+                "org.openpnp.machine.grbl.driver.GrblDriver");
+        
+        // De-serialize as GrblDriver
+        Serializer serIn = XmlSerialize.createSerializer();
+        StringReader sr = new StringReader(driverSerialized);
+        org.openpnp.machine.grbl.driver.GrblDriver grblDriver = 
+                serIn.read(org.openpnp.machine.grbl.driver.GrblDriver.class, sr);
+        
+        // Replace the driver
+        replaceDriver(grblDriver);
+        
+        // NOTE: Axis conversion suggestions will be handled in the next findIssues() call
+        // after the driver has been replaced, since we can't access the solutions object here
+    }
+
+    /**
+     * Convert a single ReferenceControllerAxis to GrblControllerAxis
+     * 
+     * @param axis The axis to convert
+     * @param grblDriver The grbl driver that should control this axis
+     * @throws Exception
+     */
+    private static void convertSingleAxisToGrbl(ControllerAxis axis, org.openpnp.machine.grbl.driver.GrblDriver grblDriver) throws Exception {
+        Machine machine = Configuration.get().getMachine();
+        
+        // Store important properties before removal
+        String axisId = axis.getId();
+        String axisName = axis.getName();
+        Driver originalDriver = axis.getDriver();
+        
+        // Store the axis position in the list to maintain order
+        List<Axis> allAxes = machine.getAxes();
+        int axisIndex = allAxes.indexOf(axis);
+        
+        // Serialize the current axis to preserve all settings
+        Serializer serOut = XmlSerialize.createSerializer();
+        StringWriter sw = new StringWriter();
+        serOut.write(axis, sw);
+        String axisSerialized = sw.toString();
+        
+        // Replace class name with GrblControllerAxis
+        axisSerialized = axisSerialized.replace(
+                "org.openpnp.machine.reference.axis.ReferenceControllerAxis",
+                "org.openpnp.machine.grbl.axis.GrblControllerAxis");
+        
+        // Also handle if it was already some other subclass
+        axisSerialized = axisSerialized.replace(
+                axis.getClass().getCanonicalName(),
+                "org.openpnp.machine.grbl.axis.GrblControllerAxis");
+        
+        // De-serialize as GrblControllerAxis
+        Serializer serIn = XmlSerialize.createSerializer();
+        StringReader sr = new StringReader(axisSerialized);
+        org.openpnp.machine.grbl.axis.GrblControllerAxis grblAxis = 
+                serIn.read(org.openpnp.machine.grbl.axis.GrblControllerAxis.class, sr);
+        
+        // Set driver explicitly 
+        grblAxis.setDriver(originalDriver);
+        
+        // Remove the old axis from the machine
+        machine.removeAxis(axis);
+        
+        // Add the new axis to the machine
+        machine.addAxis(grblAxis);
+        
+        // Restore the original position in the axis list using permutateAxis
+        if (axisIndex >= 0) {
+            List<Axis> newAxesList = machine.getAxes();
+            int currentIndex = newAxesList.indexOf(grblAxis);
+            
+            // Move axis to correct position
+            while (currentIndex > axisIndex) {
+                machine.permutateAxis(grblAxis, -1);
+                currentIndex--;
+            }
+            while (currentIndex < axisIndex) {
+                machine.permutateAxis(grblAxis, 1);
+                currentIndex++;
+            }
+        }
+        
+        Logger.info("Converted axis '{}' (ID: {}) to GrblControllerAxis with grblHAL synchronization (driver: {})", 
+                    axisName, axisId, originalDriver.getName());
+                    
+        // Note: Camera and other component axis references will need manual reconfiguration
+        // because most components don't have setter methods for axis references
+    }
+
+    /**
+     * Convert a GrblControllerAxis back to ReferenceControllerAxis
+     * 
+     * @param axis The axis to convert back
+     * @param grblDriver The grbl driver
+     * @throws Exception
+     */
+    private static void convertSingleAxisFromGrbl(ControllerAxis axis, org.openpnp.machine.grbl.driver.GrblDriver grblDriver) throws Exception {
+        Machine machine = Configuration.get().getMachine();
+        
+        // Store important properties
+        String axisName = axis.getName();
+        Driver originalDriver = axis.getDriver();
+        
+        // Store position
+        List<Axis> allAxes = machine.getAxes();
+        int axisIndex = allAxes.indexOf(axis);
+        
+        // Serialize the current axis
+        Serializer serOut = XmlSerialize.createSerializer();
+        StringWriter sw = new StringWriter();
+        serOut.write(axis, sw);
+        String axisSerialized = sw.toString();
+        
+        // Replace class name with ReferenceControllerAxis
+        axisSerialized = axisSerialized.replace(
+                "org.openpnp.machine.grbl.axis.GrblControllerAxis",
+                "org.openpnp.machine.reference.axis.ReferenceControllerAxis");
+        
+        // De-serialize as ReferenceControllerAxis
+        Serializer serIn = XmlSerialize.createSerializer();
+        StringReader sr = new StringReader(axisSerialized);
+        ReferenceControllerAxis refAxis = 
+                serIn.read(ReferenceControllerAxis.class, sr);
+        
+        // Set driver explicitly
+        refAxis.setDriver(originalDriver);
+        
+        // Remove old axis and add new axis
+        machine.removeAxis(axis);
+        machine.addAxis(refAxis);
+        
+        // Restore position
+        if (axisIndex >= 0) {
+            List<Axis> newAxesList = machine.getAxes();
+            int currentIndex = newAxesList.indexOf(refAxis);
+            
+            while (currentIndex > axisIndex) {
+                machine.permutateAxis(refAxis, -1);
+                currentIndex--;
+            }
+            while (currentIndex < axisIndex) {
+                machine.permutateAxis(refAxis, 1);
+                currentIndex++;
+            }
+        }
+        
+        Logger.info("Converted axis '{}' back to ReferenceControllerAxis (driver: {})", 
+                    axisName, originalDriver.getName());
+    }
+
+    /**
+     * Convert ReferenceActuator to GrblActuator with preserved settings
+     */
+    private static void convertToGrblActuator(org.openpnp.machine.reference.ReferenceActuator oldActuator, 
+                                              org.openpnp.machine.grbl.driver.GrblDriver grblDriver) throws Exception {
+        Machine machine = Configuration.get().getMachine();
+        
+        // Find if this is a head actuator or machine actuator
+        Head parentHead = null;
+        for (Head head : machine.getHeads()) {
+            if (head.getActuators().contains(oldActuator)) {
+                parentHead = head;
+                break;
+            }
+        }
+        
+        // Serialize the current actuator to preserve all settings
+        Serializer serOut = XmlSerialize.createSerializer();
+        StringWriter sw = new StringWriter();
+        serOut.write(oldActuator, sw);
+        String actuatorSerialized = sw.toString();
+        
+        // Replace class name with GrblActuator
+        actuatorSerialized = actuatorSerialized.replace(
+                oldActuator.getClass().getCanonicalName(),
+                "org.openpnp.machine.grbl.actuator.GrblActuator");
+        
+        // De-serialize as GrblActuator
+        Serializer serIn = XmlSerialize.createSerializer();
+        StringReader sr = new StringReader(actuatorSerialized);
+        org.openpnp.machine.grbl.actuator.GrblActuator newActuator = 
+                serIn.read(org.openpnp.machine.grbl.actuator.GrblActuator.class, sr);
+        
+        // Set default actuator type (most pick & place actuators are output only)
+        newActuator.setActuatorType(org.openpnp.machine.grbl.actuator.GrblActuator.ActuatorType.OUTPUT_ONLY);
+        
+        // Replace actuator using appropriate API
+        if (parentHead != null) {
+            // Head-level actuator - use head API
+            parentHead.removeActuator(oldActuator);
+            parentHead.addActuator(newActuator);
+            Logger.info("Converted head actuator '{}' on head '{}' to GrblActuator with IO pin invert support (IO index: {})", 
+                       newActuator.getName(), parentHead.getName(), newActuator.getIndex());
+        } else {
+            // Machine-level actuator - use machine API
+            machine.removeActuator(oldActuator);
+            machine.addActuator(newActuator);
+            Logger.info("Converted machine actuator '{}' to GrblActuator with IO pin invert support (IO index: {})", 
+                       newActuator.getName(), newActuator.getIndex());
+        }
+    }
+    
+    /**
+     * Convert GrblActuator back to ReferenceActuator
+     */
+    private static void convertFromGrblActuator(Actuator actuator, 
+                                               org.openpnp.machine.grbl.driver.GrblDriver grblDriver) throws Exception {
+        Machine machine = Configuration.get().getMachine();
+        
+        // Find if this is a head actuator or machine actuator
+        Head parentHead = null;
+        for (Head head : machine.getHeads()) {
+            if (head.getActuators().contains(actuator)) {
+                parentHead = head;
+                break;
+            }
+        }
+        
+        // Serialize the current actuator
+        Serializer serOut = XmlSerialize.createSerializer();
+        StringWriter sw = new StringWriter();
+        serOut.write(actuator, sw);
+        String actuatorSerialized = sw.toString();
+        
+        // Replace class name with ReferenceActuator
+        actuatorSerialized = actuatorSerialized.replace(
+                "org.openpnp.machine.grbl.actuator.GrblActuator",
+                "org.openpnp.machine.reference.ReferenceActuator");
+        
+        // De-serialize as ReferenceActuator
+        Serializer serIn = XmlSerialize.createSerializer();
+        StringReader sr = new StringReader(actuatorSerialized);
+        org.openpnp.machine.reference.ReferenceActuator refActuator = 
+                serIn.read(org.openpnp.machine.reference.ReferenceActuator.class, sr);
+        
+        // Replace actuator using appropriate API
+        if (parentHead != null) {
+            // Head-level actuator - use head API
+            parentHead.removeActuator(actuator);
+            parentHead.addActuator(refActuator);
+            Logger.info("Converted head actuator '{}' on head '{}' back to ReferenceActuator", 
+                       refActuator.getName(), parentHead.getName());
+        } else {
+            // Machine-level actuator - use machine API
+            machine.removeActuator(actuator);
+            machine.addActuator(refActuator);
+            Logger.info("Converted machine actuator '{}' back to ReferenceActuator", refActuator.getName());
+        }
     }
 
     /**
